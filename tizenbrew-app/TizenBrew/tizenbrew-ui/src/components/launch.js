@@ -1,10 +1,11 @@
 // Opening an app.
 //
-// Apps need TizenBrew in debug mode (that is how mods like TizenTube get into the page, and how Back
-// returns from apps). Getting into debug mode means TizenBrew closes and the TV reopens it. Upstream did
-// that at every start, so TizenBrew always opened, closed and opened again. Now Home opens directly, and
-// the restart happens only when an app is opened: its splash stays up, TizenBrew restarts and opens it.
-// A note in localStorage lets the restarted TizenBrew show the same splash from its first frame.
+// Mods (scripts added to a website, like the TizenTube module) need TizenBrew in debug mode, and getting
+// into debug mode means TizenBrew closes and the TV reopens it. Upstream did that at every start. Now:
+// - TizenTube opens the standalone TizenTube app when it is installed (plain app switch);
+// - app modules (TizenGlow, Jellyfin...) open directly: the service adds the Back key fix to their pages;
+// - only a mod restarts TizenBrew, behind its splash, and a note in localStorage lets the restarted
+//   TizenBrew show the same splash from its first frame.
 import { Events } from './WebSocketClient.js';
 import { isBroken, appLabel } from './ui.jsx';
 
@@ -31,8 +32,33 @@ function saveOpeningHint(module) {
     } catch (e) { }
 }
 
-// Open now if TizenBrew is already in debug mode, otherwise restart into it and open after.
+// The standalone TizenTube app (reisxd/TizenTube "TizenTube Cobalt", installed with Apps2Samsung):
+// YouTube's own TV engine with TizenTube built in. When it's on the TV, the TizenTube tile opens it:
+// a plain app switch, no debug mode, no restart.
+const TIZENTUBE_APP = 'xvvl3S1TT1.TizenTubeStandalone';
+const isTizenTube = (module) => /^(npm\/)?@foxreis\/tizentube$/i.test(module.fullName || module.name || '');
+
+function hasApp(appId) {
+    try { tizen.application.getAppInfo(appId); return true; } catch (e) { return false; }
+}
+
+// Only mods (scripts added to a website, like the TizenTube module) need debug mode. App pages get
+// the Back key fix from the service as it serves them, so they open directly.
+const needsDebug = (module) => module.packageType !== 'app';
+
+// Open now if possible, otherwise restart into debug mode and open after.
 export function openModule(module) {
+    if (isTizenTube(module) && hasApp(TIZENTUBE_APP)) {
+        clearOpeningHint();
+        try {
+            tizen.application.launch(TIZENTUBE_APP, null, () => openModuleInBrew(module));
+            return;
+        } catch (e) { /* fall back to the module */ }
+    }
+    openModuleInBrew(module);
+}
+
+function openModuleInBrew(module) {
     const dispatch = window.dispatch;
     const client = window.state && window.state.client;
     if (isBroken(module)) {
@@ -41,7 +67,7 @@ export function openModule(module) {
     }
     if (!client) return;
     dispatch({ type: 'SET_OPENING', payload: module });
-    if (window.tbNeedsDebug) {
+    if (window.tbNeedsDebug && needsDebug(module)) {
         saveOpeningHint(module);
         client.relaunchFor(module);
         return;

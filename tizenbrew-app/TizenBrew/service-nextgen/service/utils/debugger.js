@@ -10,20 +10,8 @@ const WebSocket = require('ws');
 
 const modulesCache = new Map();
 
-// Runs at the start of every page in TizenBrew's window; only acts on app module pages.
-// Registered first on window (bubble phase), it checks after all other handlers ran (setTimeout 0)
-// whether the app used Back (preventDefault); if not, it goes back to TizenBrew.
-const BACK_TO_TIZENBREW = `(function () {
-    if (location.host !== '127.0.0.1:8081' || location.pathname.indexOf('/module/') !== 0) return;
-    window.addEventListener('keydown', function (e) {
-        if (e.keyCode !== 10009) return;
-        setTimeout(function () {
-            if (e.defaultPrevented) return;
-            if (history.length > 1) history.back();
-            else location.href = 'file:///tizenbrew-ui/dist/index.html';
-        }, 0);
-    });
-})();`;
+// Back returns to TizenBrew from app pages (see backKey.js); also added by the service to app pages.
+const { BACK_TO_TIZENBREW } = require('./backKey.js');
 
 // Module code, cached per module *version* so a new release is picked up on the next launch.
 function cacheKey(mdl) {

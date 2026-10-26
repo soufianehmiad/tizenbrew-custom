@@ -13,6 +13,7 @@ module.exports.onStart = function () {
     const loadModules = require('./utils/moduleLoader.js');
     const startDebugging = require('./utils/debugger.js');
     const { deliverPending } = require('./utils/pendingLaunch.js');
+    const { addBackKey } = require('./utils/backKey.js');
     const startService = require('./utils/serviceLauncher.js');
     const { Connection, Events } = require('./utils/wsCommunication.js');
     let WebSocket;
@@ -50,6 +51,11 @@ module.exports.onStart = function () {
                     const ext = base.indexOf('.') > 0 ? base.split('.').pop() : '';
                     if (ext) res.type(ext);
                     else if (fetchRes.headers.get('content-type')) res.setHeader('Content-Type', fetchRes.headers.get('content-type'));
+                    // App pages get the Back-to-TizenBrew script here, so apps open without debug mode
+                    // (no TizenBrew restart).
+                    if (fetchRes.ok && /^html?$/i.test(ext)) {
+                        return fetchRes.text().then(html => res.send(addBackKey(html)));
+                    }
                     fetchRes.body.on('error', () => res.destroy());
                     fetchRes.body.pipe(res);
                 })

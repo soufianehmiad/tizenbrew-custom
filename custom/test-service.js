@@ -147,8 +147,13 @@ function connect(origin) {
     fs.writeFileSync(configPath, JSON.stringify(cfg));
     const page = await get('/module/' + encodeURIComponent('npm/swagger-ui-dist@5.9.0') + '/index.html');
     assert.strictEqual(page.status, 200); assert.ok(/text\/html/.test(page.type || ''), 'html served as ' + page.type);
+    // App pages carry the Back-to-TizenBrew script (so apps work without debug mode), once, right after <head>.
+    assert.strictEqual(page.body.split('__tbBackFix = true').length, 2, 'Back script missing or doubled');
+    assert.ok(/<head[^>]*><script>\(function \(\) \{\s+if \(window\.__tbBackFix\)/.test(page.body), 'Back script not at the start of <head>');
+    assert.ok(page.body.includes('swagger-ui'), 'page content changed');
     const css = await get('/module/' + encodeURIComponent('npm/swagger-ui-dist@5.9.0') + '/swagger-ui.css');
     assert.ok(/text\/css/.test(css.type || ''), 'css served as ' + css.type);
+    assert.ok(!css.body.includes('__tbBackFix'), 'Back script added to a non-HTML file');
     cfg.modules.pop();
     fs.writeFileSync(configPath, JSON.stringify(cfg));
   });
