@@ -16,14 +16,37 @@ function restoreFocus() {
     }, 150);
 }
 
+const HOME = '/tizenbrew-ui/dist/index.html';
+
+// One step back, at most once per Back press: closing the TV keyboard with Back also blurs the
+// field (Add app), and both used to navigate, which could leave Home out of the history (stuck).
+// If there is nothing to go back to, go Home instead of doing nothing.
+window.tbLastBack = 0;
+window.tbGoBack = function () {
+    const now = Date.now();
+    if (now - window.tbLastBack < 500) return;
+    window.tbLastBack = now;
+    const before = location.href;
+    history.back();
+    restoreFocus();
+    setTimeout(() => {
+        if (location.href === before && location.pathname !== HOME) {
+            history.replaceState(null, '', HOME);
+            dispatchEvent(new PopStateEvent('popstate'));
+            restoreFocus();
+        }
+    }, 400);
+};
+
 window.shouldDisableAutoLaunch = false;
 window.addEventListener('keydown', (e) => {
     if (e.keyCode === 13) {
         document.querySelector('.focus')?.click();
     } else if (e.keyCode === 10009) {
-        if (location.pathname !== '/tizenbrew-ui/dist/index.html') {
-            history.back();
-            restoreFocus();
+        // Already handled (e.g. the keyboard just closed with Back): don't go back again or exit.
+        if (Date.now() - window.tbLastBack < 500) return;
+        if (location.pathname !== HOME) {
+            window.tbGoBack();
         } else {
             tizen.application.getCurrentApplication().exit();
         }

@@ -56,12 +56,14 @@ function AddModule() {
     function submit() {
         if (done.current) return;
         done.current = true;
-        if (name) {
-            state.client.send({
-                type: Events.ModuleAction,
-                payload: { action: 'add', module: `${loc.query.type}/${name}` }
-            });
-        }
+        // Keyboard closed with Back: that's a cancel, and the Back key is already going back.
+        if (Date.now() - window.tbLastBack < 500) return;
+        // Closed empty: leave the way we came (Home or Apps). It used to jump to Apps from Home.
+        if (!name) { window.tbGoBack(); return; }
+        state.client.send({
+            type: Events.ModuleAction,
+            payload: { action: 'add', module: `${loc.query.type}/${name}` }
+        });
         state.client.send({ type: Events.GetModules, payload: true });
         // Show the Apps list. If we came from it, step back instead of stacking a second copy.
         if (loc.query.from === 'apps') history.back();
