@@ -348,6 +348,10 @@ module.exports.onStart = function () {
                     if (mdl.packageType === 'app') {
                         inDebug.webDebug = false;
                         inDebug.tizenDebug = false;
+                        // App pages get no script: don't keep the last mod's (e.g. TizenTube's) file to inject.
+                        currentModule.mainFile = '';
+                        currentModule.tizenAppId = '';
+                        currentModule.evaluateScriptOnDocumentStart = false;
                     } else {
                         currentModule.mainFile = mdl.mainFile;
                         currentModule.tizenAppId = mdl.tizenAppId;

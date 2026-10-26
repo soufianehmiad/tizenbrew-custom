@@ -10,6 +10,21 @@ const WebSocket = require('ws');
 
 const modulesCache = new Map();
 
+// Runs at the start of every page in TizenBrew's window; only acts on app module pages.
+// Registered first on window (bubble phase), it checks after all other handlers ran (setTimeout 0)
+// whether the app used Back (preventDefault); if not, it goes back to TizenBrew.
+const BACK_TO_TIZENBREW = `(function () {
+    if (location.host !== '127.0.0.1:8081' || location.pathname.indexOf('/module/') !== 0) return;
+    window.addEventListener('keydown', function (e) {
+        if (e.keyCode !== 10009) return;
+        setTimeout(function () {
+            if (e.defaultPrevented) return;
+            if (history.length > 1) history.back();
+            else location.href = 'file:///tizenbrew-ui/dist/index.html';
+        }, 0);
+    });
+})();`;
+
 // Module code, cached per module *version* so a new release is picked up on the next launch.
 function cacheKey(mdl) {
     return `${mdl.fullName}@${mdl.version || ''}`;
@@ -47,9 +62,15 @@ function startDebugging(port, queuedEvents, clientConn, ip, mdl, inDebug, appCon
             let alerted = false; // show the failed-to-load message once, not once per frame
             client.Runtime.enable();
             client.Debugger.enable();
+            // App modules (pages served from :8081/module/...) often ignore the Back key, which left the
+            // user stuck (e.g. TizenGlow). Back returns to TizenBrew unless the app handled it itself.
+            if (!isAnotherApp) {
+                client.Page.enable();
+                client.Page.addScriptToEvaluateOnNewDocument({ source: BACK_TO_TIZENBREW, expression: BACK_TO_TIZENBREW });
+            }
 
             client.on('Runtime.executionContextCreated', (msg) => {
-                if (!mdl.evaluateScriptOnDocumentStart && mdl.name !== '') {
+                if (mdl.packageType !== 'app' && !mdl.evaluateScriptOnDocumentStart && mdl.name !== '') {
                     const cache = modulesCache.get(cacheKey(mdl));
                     const runFixes = () => { getFixes().then(code => { if (code) client.Runtime.evaluate({ expression: code, contextId: msg.context.id }); }); };
                     if (cache) {
@@ -64,7 +85,7 @@ function startDebugging(port, queuedEvents, clientConn, ip, mdl, inDebug, appCon
                             if (!alerted && (alerted = true)) client.Runtime.evaluate({ expression: `alert("Failed to load module: '${mdl.fullName}'. Please relaunch TizenBrew to try again.")`, contextId: msg.context.id });
                         });
                     }
-                } else if (mdl.name !== '' && mdl.evaluateScriptOnDocumentStart && !earlyInjected) {
+                } else if (mdl.packageType !== 'app' && mdl.name !== '' && mdl.evaluateScriptOnDocumentStart && !earlyInjected) {
                     earlyInjected = true;
                     const cache = modulesCache.get(cacheKey(mdl));
                     // The module first, then its fixes (separate scripts: a broken fix can't break the module),
