@@ -1,5 +1,6 @@
 import { createContext } from 'preact';
 import { useReducer } from 'preact/hooks';
+import { readOpeningHint } from './launch.js';
 
 const initialState = {
     sharedData: {
@@ -12,7 +13,8 @@ const initialState = {
         // From the service: { autoLaunchModule, autoLaunchServiceList }
         config: null,
         state: null,
-        opening: null,
+        // Restarted to open an app (launch.js): keep showing its splash from the first frame.
+        opening: readOpeningHint(),
         error: {
             message: null,
             dissapear: false

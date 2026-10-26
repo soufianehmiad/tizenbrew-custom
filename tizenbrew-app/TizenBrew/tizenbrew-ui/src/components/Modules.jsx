@@ -8,6 +8,7 @@ import AppFace, { appLook, CURATED } from './ModuleIcon.jsx';
 import { cx, useTvFocus, appLabel, isBroken, BASE, Spinner } from './ui.jsx';
 import { Plus, Offline } from './icons.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
+import { openModule } from './launch.js';
 import { useTranslation } from 'react-i18next';
 
 const BIG = { w: 336, h: 202, gap: 56, radius: 22, glyph: 94 };
@@ -156,16 +157,8 @@ export default function Modules() {
     const justAdded = window.tbFocusApp;
     const firstKey = justAdded && installed.has(justAdded) ? 'app:' + justAdded : null;
 
-    function open(module) {
-        if (isBroken(module)) {
-            dispatch({ type: 'SET_ERROR', payload: { message: 'errors.moduleNotFound', args: { moduleName: appLabel(module) }, disappear: true } });
-            return;
-        }
-        for (const key of module.keys || []) tizen.tvinputdevice.registerKey(key);
-        state.client.send({ type: Events.LaunchModule, payload: module });
-        dispatch({ type: 'SET_OPENING', payload: module });
-        if (!module.evaluateScriptOnDocumentStart) location.href = module.appPath;
-    }
+    // Opens it, restarting into debug mode first if needed (launch.js).
+    const open = openModule;
 
     function add(item) {
         if (adding) return;

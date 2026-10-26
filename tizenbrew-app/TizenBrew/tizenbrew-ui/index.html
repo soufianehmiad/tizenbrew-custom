@@ -6,8 +6,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TizenBrew</title>
     <script type="text/javascript" src="$WEBAPIS/webapis/webapis.js"></script>
+    <!-- Start screen drawn before any code loads, identical to the app's own (app.jsx removes it),
+         so starting never flashes a blank page. Sizes in vh/vw match the 1920x1080 layout. -->
+    <style>
+      html, body { margin: 0; overflow: hidden; background: #111113; }
+      #tb-boot { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 100; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; background: radial-gradient(62.5vw 74vh at 50% 40%, #26262A 0%, #111113 70%); }
+      #tb-boot .logo { width: 18.52vh; height: 18.52vh; display: block; }
+      #tb-boot .spin { width: 5.19vh; height: 5.19vh; margin-top: 6.67vh; box-sizing: border-box; border-radius: 50%;
+        border: 0.37vh solid rgba(255,255,255,0.22); border-top-color: #FFFFFF; border-right-color: #FFFFFF;
+        -webkit-animation: tbboot 0.9s linear infinite; animation: tbboot 0.9s linear infinite; }
+      #tb-boot .yt { width: 22.92vw; display: none; }
+      #tb-boot.opening { background: #141416; }
+      #tb-boot.opening .logo, #tb-boot.opening .spin { display: none; }
+      #tb-boot.youtube { background: #0F0F0F; }
+      #tb-boot.youtube .yt { display: block; }
+      @-webkit-keyframes tbboot { to { -webkit-transform: rotate(360deg); } }
+      @keyframes tbboot { to { transform: rotate(360deg); } }
+    </style>
   </head>
   <body>
+    <div id="tb-boot" role="status">
+      <img class="logo" src="./src/assets/tizenbrew-app-icon.svg" alt="TizenBrew" />
+      <div class="spin"></div>
+      <img class="yt" src="./src/assets/youtube-logo-dark.svg" alt="" />
+    </div>
+    <script>
+      // Restarting to open an app (components/launch.js): show its splash instead of the TizenBrew logo.
+      try {
+        var h = JSON.parse(localStorage.getItem('tbOpening') || 'null');
+        if (h && Date.now() - h.t < 90000) {
+          var b = document.getElementById('tb-boot');
+          b.className = /tizentube/i.test(h.fullName || '') ? 'opening youtube' : 'opening';
+        }
+      } catch (e) { }
+    </script>
     <div id="app"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

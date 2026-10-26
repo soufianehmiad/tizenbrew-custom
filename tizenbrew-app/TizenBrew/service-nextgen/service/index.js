@@ -154,7 +154,9 @@ module.exports.onStart = function () {
 
     const appControlData = {
         module: null,
-        args: null
+        args: null,
+        // fullName of the app to open once the UI has restarted in debug mode (ReLaunchInDebug).
+        launch: null
     };
 
     // Newest load wins (two loads can finish out of order); an overtaken load follows the newest.
@@ -306,6 +308,9 @@ module.exports.onStart = function () {
                     break;
                 }
                 case Events.ReLaunchInDebug: {
+                    // Newer UIs say which app to open after the restart; only installed apps are accepted.
+                    const launch = payload && typeof payload.launch === 'string' ? findModule(payload.launch) : null;
+                    appControlData.launch = launch && !launch.failed ? launch.fullName : null;
                     setTimeout(() => {
                         createAdbConnection(payload && payload.tvIP, currentModule);
                     }, 1000);

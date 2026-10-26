@@ -1,3 +1,5 @@
+import { openModule, clearOpeningHint } from './launch.js';
+
 const Events = {
     Ready: -1,
     AppControlData: 0,
@@ -24,6 +26,15 @@ class Client {
         this.pendingEvents = [];
         this.modulesLoaded = false;
         this.modules = [];
+        this.casting = false;         // opened by another app (e.g. casting from a phone)
+        this.relaunchModule = null;   // app to open once restarted in debug mode (launch.js)
+        this.autoHandled = false;
+    }
+
+    // Restart TizenBrew in debug mode, then open this app (see launch.js).
+    relaunchFor(module) {
+        this.relaunchModule = module;
+        this.send({ type: Events.CanLaunchInDebug });
     }
 
     onOpen() {
@@ -42,6 +53,7 @@ class Client {
                     });
                 }
 
+                this.casting = true;
                 this.send({
                     type: Events.AppControlData,
                     payload: {
@@ -82,10 +94,16 @@ class Client {
                 });
 
                 if (!payload.rwiDebug && !payload.appDebug && !payload.tizenDebug) {
-                    this.send({
-                        type: Events.CanLaunchInDebug
-                    });
+                    if (this.casting) {
+                        // Opened to play something: restart into debug mode right away (it will open it).
+                        this.send({ type: Events.CanLaunchInDebug });
+                    } else {
+                        // Show Home without restarting; opening an app restarts into debug mode (launch.js).
+                        window.tbNeedsDebug = true;
+                        this.send({ type: Events.GetModules });
+                    }
                 } else {
+                    window.tbNeedsDebug = false;
                     this.send({
                         type: Events.GetModules
                     });
@@ -100,7 +118,9 @@ class Client {
                     this.send({
                         type: Events.ReLaunchInDebug,
                         payload: {
-                            tvIP
+                            tvIP,
+                            // The app to open after the restart (older services ignore this).
+                            launch: this.relaunchModule ? this.relaunchModule.fullName : undefined
                         }
                     });
 
@@ -111,6 +131,12 @@ class Client {
                     });
                 }
                 else {
+                    // Can't restart into debug mode: the app can't open. Leave its splash and explain.
+                    if (this.relaunchModule) {
+                        this.relaunchModule = null;
+                        clearOpeningHint();
+                        this.context.dispatch({ type: 'SET_OPENING', payload: null });
+                    }
                     this.context.dispatch({
                         type: 'SET_ERROR',
                         payload: {
@@ -164,6 +190,17 @@ class Client {
 
             case Events.GetConfig: {
                 this.context.dispatch({ type: 'SET_CONFIG', payload });
+                // "Open app at start" when TizenBrew opened without restarting (in debug mode the
+                // service sends it after the restart instead). Hold ↑ while starting to skip it.
+                if (window.tbNeedsDebug && !this.autoHandled) {
+                    this.autoHandled = true;
+                    const name = payload && payload.autoLaunchModule;
+                    if (name && !window.shouldDisableAutoLaunch) {
+                        const module = this.modules.find(mdl => mdl.fullName === name);
+                        if (module) openModule(module);
+                        else this.context.dispatch({ type: 'SET_ERROR', payload: { message: 'errors.moduleNotFound', args: { moduleName: name.replace(/^(npm|gh)\//, '') }, disappear: true } });
+                    }
+                }
                 break;
             }
 
@@ -203,8 +240,22 @@ class Client {
             payload: debugStatus
         });
 
+        if (!payload) {
+            // Restarted, but with nothing to open (e.g. an older service): show Home.
+            clearOpeningHint();
+            if (this.context.state.sharedData.opening && !this.context.state.sharedData.opening.appPath) {
+                this.context.dispatch({ type: 'SET_OPENING', payload: null });
+            }
+        }
         if (payload) {
-            if (payload.type === 'autolaunch' && !window.shouldDisableAutoLaunch) {
+            if (payload.type === 'launch') {
+                // Restarted in debug mode to open this app (launch.js); debug mode is on now.
+                window.tbNeedsDebug = false;
+                const module = this.modules.find(mdl => mdl.fullName === payload.module);
+                if (module) openModule(module);
+                else { clearOpeningHint(); this.context.dispatch({ type: 'SET_OPENING', payload: null }); }
+            }
+            else if (payload.type === 'autolaunch' && !window.shouldDisableAutoLaunch) {
                 const module = this.modules.find(mdl => mdl.fullName === payload.module);
                 // A module that failed to download has no page to open; opening it reloaded TizenBrew in a loop.
                 if (!module || module.failed || (!module.appPath && !module.evaluateScriptOnDocumentStart)) {

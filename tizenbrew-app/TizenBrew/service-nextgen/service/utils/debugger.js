@@ -128,7 +128,12 @@ function startDebugging(port, queuedEvents, clientConn, ip, mdl, inDebug, appCon
             if (!isAnotherApp) {
                 // Held until the relaunched UI is ready (see pendingLaunch.js).
                 let payload = null;
-                if (appControlData && appControlData.module) {
+                if (appControlData && appControlData.launch) {
+                    // The UI restarted in debug mode to open this app (it opens Home without restarting
+                    // and only restarts when an app is opened). One-shot.
+                    payload = { type: 'launch', module: appControlData.launch };
+                    appControlData.launch = null;
+                } else if (appControlData && appControlData.module) {
                     payload = {
                         type: 'appControl',
                         module: appControlData.module,

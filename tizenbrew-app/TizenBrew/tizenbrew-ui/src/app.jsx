@@ -13,12 +13,14 @@ import UserAgentSettings from './pages/UserAgentSettings.jsx';
 import AppFace, { moduleSplash } from './components/ModuleIcon.jsx';
 import ErrorBanner from './components/ErrorBanner.jsx';
 import { Spinner, BASE } from './components/ui.jsx';
+import { clearOpeningHint } from './components/launch.js';
 
-// The interface is laid out at 1920x1080; scale it to whatever viewport the TV reports.
+// The interface is laid out at 1920x1080; scale it to the TV's viewport. From the width only: the
+// on-screen keyboard makes the viewport shorter, and scaling by height shrank the whole screen.
 function fitScreen() {
   const el = document.querySelector('.tb-screen');
   if (!el) return;
-  const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+  const scale = window.innerWidth / 1920;
   el.style.transform = Math.abs(scale - 1) < 0.001 ? '' : `scale(${scale})`;
 }
 
@@ -48,6 +50,9 @@ export default function App() {
   useEffect(() => {
     fitScreen();
     window.addEventListener('resize', fitScreen);
+    // index.html shows the same start screen before the code loads; now ours is up, remove it.
+    const boot = document.getElementById('tb-boot');
+    if (boot) boot.parentNode.removeChild(boot);
     if (!window.setClient) {
       startService(context);
       window.setClient = true;
@@ -57,7 +62,7 @@ export default function App() {
   // If an app fails to open, don't leave the opening screen up forever.
   useEffect(() => {
     if (!shared.opening) return;
-    const timer = setTimeout(() => context.dispatch({ type: 'SET_OPENING', payload: null }), 20000);
+    const timer = setTimeout(() => { clearOpeningHint(); context.dispatch({ type: 'SET_OPENING', payload: null }); }, 25000);
     return () => clearTimeout(timer);
   }, [shared.opening]);
 
