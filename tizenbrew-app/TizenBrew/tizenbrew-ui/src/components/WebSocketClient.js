@@ -10,7 +10,8 @@ const Events = {
     GetServiceStatuses: 7,
     Error: 8,
     CanLaunchModules: 9,
-    ModuleAction: 10
+    ModuleAction: 10,
+    GetConfig: 11
 };
 
 class Client {
@@ -134,6 +135,8 @@ class Client {
 
                 this.modules = payload;
                 this.modulesLoaded = true;
+                // Current choices (app opened at start, background services) for Settings.
+                this.send({ type: Events.GetConfig });
 
                 this.send({
                     type: Events.Ready
@@ -159,7 +162,14 @@ class Client {
                 break;
             }
 
+            case Events.GetConfig: {
+                this.context.dispatch({ type: 'SET_CONFIG', payload });
+                break;
+            }
+
             case Events.Error: {
+                // An older service that doesn't know a newer request: nothing for the user to do.
+                if (payload === 'Invalid event type.') break;
                 this.context.dispatch({
                     type: 'SET_ERROR',
                     // The debugger failing almost always means Host PC IP isn't 127.0.0.1: use the clear, translated message.

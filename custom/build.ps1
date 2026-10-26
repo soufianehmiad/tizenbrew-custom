@@ -25,7 +25,7 @@ function Invoke-Tool([string]$cmd, [string]$dir) {
     } finally { Pop-Location }
 }
 
-# 1. App icon: "Apps +" (custom\icon.svg rendered to custom\tizenbrew-icon.png, 512x512).
+# 1. App icon: flask with apps and a plus (custom\icon.svg rendered to custom\tizenbrew-icon.png, 512x512).
 Copy-Item (Join-Path $PSScriptRoot 'tizenbrew-icon.png') "$tb\icon.png" -Force
 
 # 2. Test the autolaunch fix, then build the service (Babel for old Tizen Node, bundled to dist\index.js) and UI.

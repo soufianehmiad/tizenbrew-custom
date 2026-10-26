@@ -2,128 +2,193 @@
 @tailwind components;
 @tailwind utilities;
 
-/* TizenBrew TV look: a system-style app manager. Plain CSS with rgba values on purpose:
-   the build flattens CSS variables for old TVs, which breaks Tailwind's opacity/ring colors. */
+/* TizenBrew TV look (Apple TV inspired): a photo of the selected app on top, rounded app icons
+   below, Settings as rounded rows. Plain CSS with literal values on purpose: the build flattens
+   CSS variables for old TVs, and older TV browsers lack newer shorthands (no `inset`, no `gap`
+   reliance). Only transform and opacity animate, which the TV composites without repainting. */
+
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 400; font-display: swap;
+    src: url('./assets/fonts/inter-latin-400.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 500; font-display: swap;
+    src: url('./assets/fonts/inter-latin-500.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 600; font-display: swap;
+    src: url('./assets/fonts/inter-latin-600.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 400; font-display: swap;
+    src: url('./assets/fonts/inter-latin-ext-400.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 500; font-display: swap;
+    src: url('./assets/fonts/inter-latin-ext-500.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 600; font-display: swap;
+    src: url('./assets/fonts/inter-latin-ext-600.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
 
 html, body {
     margin: 0;
-    background: #0A0F1A;
+    overflow: hidden;
+    background: #1C1C1E;
     color: #FFFFFF;
-    font-family: 'SamsungOneUI', 'SamsungOne', 'Samsung Sans', Inter, system-ui, sans-serif;
+    font-family: 'Inter', 'SamsungOneUI', 'SamsungOne', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
 }
+::selection { background: rgba(10,132,255,0.45); }
 
-/* Focus marker for older pages; main.jsx clicks the element with this class on Enter. */
-.focus {
-    outline: 4px solid #FFFFFF;
-    outline-offset: 4px;
-}
+/* Full-screen frame, laid out at 1920x1080 and scaled to the TV's viewport by app.jsx (fitScreen).
+   Nothing sits within 54px of an edge: TVs can crop that much. */
+.tb-screen { position: relative; width: 1920px; height: 1080px; overflow: hidden; transform-origin: 0 0; background: #1C1C1E; }
 
-/* Full-screen frame, laid out at 1920x1080 and scaled to the TV's viewport by app.jsx (fitScreen). */
-html, body { overflow: hidden; }
-.tb-screen { position: relative; width: 1920px; height: 1080px; overflow: hidden; transform-origin: 0 0; }
-.tb-backdrop { position: absolute; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; }
-.tb-muted { color: rgba(255,255,255,0.6); }
+/* ---------- Top right: Settings button and clock ---------- */
+.tb-top { position: absolute; right: 96px; top: 56px; z-index: 5; display: flex; align-items: center; height: 64px; }
+.tb-gear-wrap { position: relative; display: flex; justify-content: center; margin-right: 28px; }
+.tb-gear { width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    color: #FFFFFF; background: rgba(255,255,255,0.18);
+    -webkit-transition: -webkit-transform 200ms ease; transition: transform 200ms ease; }
+.tb-gear.focus { background: #FFFFFF; color: #1C1C1E; -webkit-transform: scale(1.12); transform: scale(1.12);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.45); }
+.tb-gear-label { position: absolute; top: 82px; font-size: 22px; font-weight: 500; white-space: nowrap; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+.tb-clock { font-size: 34px; font-weight: 500; text-shadow: 0 2px 14px rgba(0,0,0,0.5); }
 
-/* Top bar */
-.tb-top { position: absolute; left: 120px; right: 120px; top: 80px; display: flex; justify-content: space-between; align-items: center; z-index: 2; }
-.tb-title { margin: 0; font-size: 64px; font-weight: 400; letter-spacing: -0.5px; }
-.tb-top-right { display: flex; align-items: center; }
-.tb-top-right > * + * { margin-left: 36px; }
-.tb-clock { font-size: 36px; font-weight: 300; color: rgba(255,255,255,0.85); }
-.tb-pill { display: flex; align-items: center; padding: 14px 28px; border-radius: 999px; font-size: 30px;
-    color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.08); }
-.tb-pill svg { margin-right: 14px; }
-.tb-pill.focus { outline: none; background: #FFFFFF; color: #0A0F1A; }
+/* ---------- Home backdrop ---------- */
+.tb-home-bg { position: absolute; top: 0; right: 0; bottom: 0; left: 0; overflow: hidden; }
+.tb-scene { position: absolute; top: 0; right: 0; bottom: 0; left: 0; }
+.tb-fade-in { -webkit-animation: tb-fade 420ms ease-out both; animation: tb-fade 420ms ease-out both; }
+@-webkit-keyframes tb-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes tb-fade { from { opacity: 0; } to { opacity: 1; } }
+/* Pre-blurred small copy of the photo, stretched to fill the screen (no live blur on the TV). */
+.tb-scene-blur { position: absolute; top: 0; right: 0; bottom: 0; left: 0; background-size: cover; background-position: center; }
+.tb-scene-photo { position: absolute; left: 0; top: 0; width: 1920px; height: 700px; background-size: cover;
+    -webkit-mask-image: -webkit-linear-gradient(top, #000 0%, #000 55%, rgba(0,0,0,0) 100%);
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 55%, rgba(0,0,0,0) 100%);
+    mask-image: linear-gradient(180deg, #000 0%, #000 55%, rgba(0,0,0,0) 100%); }
+.tb-scene-wash { position: absolute; top: 0; right: 0; bottom: 0; left: 0; opacity: 0.9; }
+/* Darkens the left side so the caption reads on any photo. */
+.tb-scrim { position: absolute; left: 0; top: 0; width: 1300px; height: 1080px;
+    background: linear-gradient(90deg, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.45) 45%, rgba(0,0,0,0) 100%); }
 
-/* Home: app tiles */
-/* One row that scrolls sideways (focus keeps the selected app in view); padding leaves room for the
-   lifted logo. No mask on the row: a mask forces the TV to repaint the whole row every frame. */
-.tb-apps { position: absolute; left: 0; right: 0; top: 440px; padding: 40px 120px 90px 120px; display: flex; flex-wrap: nowrap;
-    overflow: hidden; }
-.tb-app { position: relative; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; margin-right: 8px; }
-.tb-app.focus { outline: none; }
+/* ---------- Home caption and pill ---------- */
+.tb-caption { position: absolute; left: 96px; top: 200px; width: 1100px; z-index: 2; text-shadow: 0 2px 18px rgba(0,0,0,0.45); }
+.tb-caption.with-pill { top: 160px; }
+.tb-caption-title { margin: 0; font-size: 72px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.05;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tb-caption-line { margin: 14px 0 0; font-size: 30px; font-weight: 400; line-height: 1.35; color: rgba(255,255,255,0.86);
+    max-height: 81px; overflow: hidden; }
+.tb-pill { display: inline-flex; align-items: center; margin-top: 22px; padding: 10px 24px 10px 16px; border-radius: 999px;
+    background: rgba(255,255,255,0.18); font-size: 24px; font-weight: 500; text-shadow: none; }
+.tb-pill > svg { margin-right: 12px; }
 
-/* Tiles, Windows 8.1 style: equal flat squares with sharp corners, each in its app's colour with the
-   official logo centred (so different logo shapes still line up). The selected tile lifts with a white
-   frame and a soft shadow; the others are slightly smaller and dimmer. Tiles are drawn at their selected
-   size and shrunk otherwise (enlarging a layer blurs it), and only transform/opacity animate, which the
-   TV composites without repainting. */
-.tb-tile { position: relative; z-index: 1; width: 260px; height: 260px; box-sizing: border-box; display: flex; align-items: center;
-    justify-content: center; opacity: 0.72;
-    -webkit-transform: translateZ(0) translateY(0) scale(0.9); transform: translateZ(0) translateY(0) scale(0.9);
-    will-change: transform, opacity;
-    -webkit-transition: -webkit-transform 300ms cubic-bezier(0.22, 1, 0.36, 1), opacity 300ms ease;
-    transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1), opacity 300ms ease; }
-.tb-tile::before { content: ''; position: absolute; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none;
-    box-shadow: inset 0 0 0 4px #FFFFFF; opacity: 0; -webkit-transition: opacity 200ms ease; transition: opacity 200ms ease; }
-.tb-app.focus .tb-tile { opacity: 1; -webkit-transform: translateZ(0) translateY(-8px) scale(1); transform: translateZ(0) translateY(-8px) scale(1); }
-.tb-app.focus .tb-tile::before { opacity: 1; }
-.tb-tile img { object-fit: contain; }
-.tb-letter-plain { width: auto; height: auto; border-radius: 0; background: none; font-size: 128px; font-weight: 600; }
-/* "Add app": an outlined tile of the same size. */
-.tb-tile-add { background: transparent; box-shadow: inset 0 0 0 3px rgba(255,255,255,0.32); }
-.tb-app.focus .tb-tile-add { background: rgba(255,255,255,0.08); }
-/* Contact shadow under the lifted tile; drawn once, only opacity/scale change. */
-.tb-app::after { content: ''; position: absolute; z-index: 0; left: 30px; right: 30px; top: 246px; height: 30px; border-radius: 50%;
-    background: radial-gradient(closest-side, rgba(0,0,0,0.5), rgba(0,0,0,0)); pointer-events: none;
-    opacity: 0; -webkit-transform: scale(0.7); transform: scale(0.7); will-change: opacity, transform;
-    -webkit-transition: opacity 300ms ease, -webkit-transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
-    transition: opacity 300ms ease, transform 300ms cubic-bezier(0.22, 1, 0.36, 1); }
-.tb-app.focus::after { opacity: 1; -webkit-transform: scale(1); transform: scale(1); }
-.tb-letter { width: 140px; height: 140px; border-radius: 34px; display: flex; align-items: center; justify-content: center;
-    font-size: 70px; font-weight: 600; color: #FFFFFF; }
+/* ---------- Problem banner (Home: in the caption's place; other pages: at the bottom) ---------- */
+.tb-banner { position: absolute; left: 96px; top: 190px; width: 1180px; z-index: 6; box-sizing: border-box; display: flex; align-items: flex-start;
+    padding: 28px 36px; border-radius: 24px; background: rgba(28,28,30,0.94); box-shadow: 0 24px 48px rgba(0,0,0,0.45); }
+.tb-banner-toast { top: auto; bottom: 64px; left: 370px; }
+.tb-banner-icon { flex-shrink: 0; margin: 2px 26px 0 0; color: #FF9F0A; }
+.tb-banner-text { display: flex; flex-direction: column; }
+.tb-banner-title { font-size: 30px; font-weight: 600; }
+.tb-banner-body { margin-top: 8px; font-size: 24px; line-height: 1.45; color: rgba(235,235,245,0.62); }
 
-/* Settings-style pages: side menu + rows */
-.tb-side { position: absolute; left: 110px; top: 300px; width: 520px; }
-.tb-nav { display: flex; align-items: center; padding: 26px 34px; margin-bottom: 14px; border-radius: 20px;
-    font-size: 38px; color: rgba(255,255,255,0.85); }
-.tb-nav svg { margin-right: 30px; flex-shrink: 0; }
-.tb-nav.active { background: rgba(255,255,255,0.12); color: #FFFFFF; }
-/* One focus style everywhere, as in Samsung's own TV settings: the selected item turns solid white. */
-.tb-nav.focus { outline: none; background: #FFFFFF; color: #0A0F1A; }
-.tb-divider { position: absolute; left: 680px; top: 270px; bottom: 140px; width: 1px; background: rgba(255,255,255,0.10); }
-.tb-main { position: absolute; left: 750px; top: 260px; width: 1040px; bottom: 40px; padding-top: 40px; box-sizing: border-box; overflow: hidden;
-    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 40px, #000 88%, transparent 100%);
-    mask-image: linear-gradient(180deg, transparent 0, #000 40px, #000 88%, transparent 100%); }
-.tb-heading { margin: 0 0 30px; font-size: 44px; font-weight: 400; }
-/* Flat rows (no card per row): a hairline between rows, and the selected row turns solid white. */
-.tb-row { position: relative; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; min-height: 112px;
-    padding: 28px 38px; margin-bottom: 4px; border-radius: 20px; font-size: 37px; color: #FFFFFF; }
-.tb-row::after { content: ''; position: absolute; left: 38px; right: 38px; bottom: -3px; height: 1px; background: rgba(255,255,255,0.09); }
-.tb-row.focus { outline: none; background: #FFFFFF; color: #0A0F1A; }
-.tb-row.focus::after { display: none; }
-.tb-row-end { display: flex; align-items: center; flex-shrink: 0; margin-left: 30px; color: rgba(255,255,255,0.6); }
-.tb-row.focus .tb-row-end { color: rgba(10,15,26,0.6); }
-.tb-row-action { color: #FFFFFF; }
-.tb-row.focus .tb-row-action { color: #C4161C; }
-.tb-row-end > * + * { margin-left: 22px; }
-.tb-row-icon { width: 64px; height: 64px; object-fit: contain; }
+/* ---------- Home rows ---------- */
+.tb-rows { position: absolute; left: 96px; right: 0; top: 420px; z-index: 2; }
+.tb-row-block { margin-bottom: 72px; }
+.tb-row-title { margin: 0 0 18px; font-size: 26px; font-weight: 500; color: rgba(255,255,255,0.72); text-shadow: 0 2px 10px rgba(0,0,0,0.35); }
+/* Room around the tiles for the lifted (scaled) one and its shadow; negative margins keep the layout. */
+.tb-tiles-clip { overflow: hidden; margin: -24px 0 -48px -24px; padding: 24px 0 48px 24px; }
+.tb-tiles { display: flex; flex-wrap: nowrap; will-change: transform;
+    -webkit-transition: -webkit-transform 320ms cubic-bezier(0.22, 1, 0.36, 1); transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1); }
+.tb-tile { position: relative; flex-shrink: 0; will-change: transform;
+    -webkit-transform: translateZ(0) scale(1); transform: translateZ(0) scale(1);
+    -webkit-transition: -webkit-transform 260ms cubic-bezier(0.22, 1, 0.36, 1); transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1); }
+/* The lift's shadow is drawn once and only faded in. */
+.tb-tile::after { content: ''; position: absolute; left: 0; top: 0; right: 0; bottom: 0; border-radius: inherit; z-index: -1;
+    box-shadow: 0 30px 44px rgba(0,0,0,0.55), 0 6px 12px rgba(0,0,0,0.3); opacity: 0;
+    -webkit-transition: opacity 260ms ease; transition: opacity 260ms ease; }
+.tb-tile.focus { z-index: 1; -webkit-transform: translateZ(0) scale(1.1); transform: translateZ(0) scale(1.1); }
+.tb-tile.focus::after { opacity: 1; }
+.tb-rows-empty .tb-row-block:first-child { margin-top: 0; }
+.tb-offline { width: 1012px; height: 168px; box-sizing: border-box; flex-shrink: 0; display: flex; align-items: center; padding: 0 40px;
+    border-radius: 20px; background: rgba(255,255,255,0.08); color: rgba(235,235,245,0.62); }
+.tb-offline > svg { margin-right: 30px; flex-shrink: 0; }
+.tb-offline > span { display: flex; flex-direction: column; }
+.tb-offline-title { font-size: 28px; font-weight: 500; color: #FFFFFF; }
+.tb-offline-text { margin-top: 8px; font-size: 24px; }
+
+/* ---------- Settings pages ---------- */
+.tb-page { position: absolute; top: 0; right: 0; bottom: 0; left: 0; }
+.tb-page-bg { position: absolute; top: 0; right: 0; bottom: 0; left: 0; background-size: cover; background-position: center; }
+.tb-page-bg::after { content: ''; position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: rgba(0,0,0,0.34); }
+.tb-page-title { position: absolute; left: 0; right: 0; top: 64px; margin: 0; text-align: center; font-size: 40px; font-weight: 600; z-index: 1; }
+.tb-page-icon { position: absolute; left: 150px; top: 294px; width: 600px; height: 360px; display: flex; align-items: center; justify-content: center; }
+.tb-big { display: flex; align-items: center; justify-content: center; color: #FFFFFF; border-radius: 40px; box-shadow: 0 36px 64px rgba(0,0,0,0.45); }
+img.tb-big { border-radius: 0; }
+/* The list column; long lists scroll inside it (the selected row is kept in view). */
+.tb-page-rows { position: absolute; left: 888px; top: 184px; width: 904px; height: 840px; box-sizing: border-box; padding: 12px 12px 40px; overflow: hidden; }
+.tb-row { position: relative; display: flex; align-items: center; justify-content: space-between; box-sizing: border-box; min-height: 92px;
+    padding: 0 36px; margin-bottom: 14px; border-radius: 16px; font-size: 30px; color: #FFFFFF; background: rgba(255,255,255,0.10);
+    -webkit-transition: -webkit-transform 200ms ease; transition: transform 200ms ease; }
+.tb-row.focus { z-index: 1; background: #FFFFFF; color: #1C1C1E; -webkit-transform: scale(1.03); transform: scale(1.03);
+    box-shadow: 0 18px 32px rgba(0,0,0,0.45); }
 .tb-row-start { display: flex; align-items: center; min-width: 0; }
-.tb-row-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tb-row-start img { margin-right: 26px; }
-.tb-info { display: flex; justify-content: space-between; padding: 26px 38px; font-size: 34px;
-    border-bottom: 1px solid rgba(255,255,255,0.08); }
+.tb-row-label { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tb-row-end { display: flex; align-items: center; flex-shrink: 0; margin-left: 30px; color: rgba(235,235,245,0.62); }
+.tb-row.focus .tb-row-end { color: #6C6C70; }
+.tb-row-value { white-space: nowrap; max-width: 420px; overflow: hidden; text-overflow: ellipsis; }
+.tb-row-end > * + * { margin-left: 18px; }
+.tb-chevron { color: rgba(235,235,245,0.38); }
+.tb-row.focus .tb-chevron { color: #AEAEB2; }
+.tb-check { display: flex; color: #FFFFFF; visibility: hidden; }
+.tb-check.on { visibility: visible; }
+.tb-row.focus .tb-check { color: #0A84FF; }
+.tb-row-info { background: rgba(255,255,255,0.06); }
+.tb-row-gap { height: 12px; }
+.tb-note { margin: 22px 36px 0; font-size: 24px; line-height: 1.45; color: rgba(235,235,245,0.62); }
+.tb-note-busy, .tb-note-error { display: flex; align-items: flex-start; }
+.tb-note-busy > svg, .tb-note-error > svg { flex-shrink: 0; margin: 2px 14px 0 0; }
+.tb-note-error { color: #FF9F8F; }
+.tb-note-error > svg { color: #FF6961; }
+.tb-about-head { padding: 0 36px 18px; outline: none; }
+.tb-about-name { font-size: 44px; font-weight: 600; }
+.tb-about-tagline { margin-top: 8px; font-size: 26px; color: rgba(235,235,245,0.62); }
 
-/* Add app */
-.tb-circle { width: 112px; height: 112px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    background: rgba(255,255,255,0.08); color: #FFFFFF; }
-.tb-circle.big { width: 144px; height: 144px; background: rgba(255,255,255,0.12); }
-.tb-circle.focus { outline: none; background: #FFFFFF; color: #0A0F1A; }
-.tb-field { width: 1020px; box-sizing: border-box; font-family: inherit; font-size: 38px; padding: 38px 44px;
-    border-radius: 22px; border: 3px solid rgba(255,255,255,0.35); background: rgba(255,255,255,0.06); color: #FFFFFF; outline: none; }
-.tb-field:focus { border-color: #FFFFFF; }
+/* Add app: the name field is a row that holds the real input. */
+.tb-field { display: flex; align-items: center; height: 96px; box-sizing: border-box; padding: 0 36px; margin-bottom: 14px; border-radius: 16px;
+    background: rgba(255,255,255,0.10); color: #FFFFFF;
+    -webkit-transition: -webkit-transform 200ms ease; transition: transform 200ms ease; }
+.tb-field.focus { background: #FFFFFF; color: #1C1C1E; -webkit-transform: scale(1.03); transform: scale(1.03); box-shadow: 0 18px 32px rgba(0,0,0,0.45); }
+.tb-field input { width: 100%; border: 0; outline: none; background: transparent; color: inherit; font-family: inherit; font-size: 32px; padding: 0;
+    caret-color: #0A84FF; }
+.tb-field input::-webkit-input-placeholder { color: #8E8E93; }
+.tb-field input::placeholder { color: #8E8E93; }
 
-/* Start-up and opening overlay */
-.tb-overlay { position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 10; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; background: #0A0F1A; }
-.tb-overlay-logo { width: 230px; height: 230px; object-fit: contain; }
-.tb-spinner { margin-top: 40px; -webkit-animation: tb-spin 1s linear infinite; animation: tb-spin 1s linear infinite; }
+/* ---------- Dialog ---------- */
+.tb-dim { position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 20; background: rgba(0,0,0,0.6); }
+.tb-dialog { position: absolute; left: 580px; top: 50%; z-index: 21; width: 760px; box-sizing: border-box; padding: 56px 56px 48px;
+    -webkit-transform: translateY(-50%); transform: translateY(-50%);
+    border-radius: 30px; background: #2C2C2E; box-shadow: 0 40px 80px rgba(0,0,0,0.55); text-align: center; outline: none; }
+.tb-dialog-icon { display: flex; justify-content: center; margin-bottom: 28px; }
+.tb-dialog-title { margin: 0; font-size: 40px; font-weight: 600; line-height: 1.2; }
+.tb-dialog-body { margin: 14px 0 0; font-size: 26px; line-height: 1.4; color: rgba(235,235,245,0.62); }
+.tb-dialog-actions { margin-top: 40px; }
+.tb-dialog-btn { height: 84px; border-radius: 16px; display: flex; align-items: center; justify-content: center; margin-top: 14px;
+    font-size: 30px; font-weight: 500; background: rgba(255,255,255,0.12); color: #FFFFFF;
+    -webkit-transition: -webkit-transform 200ms ease; transition: transform 200ms ease; }
+.tb-dialog-btn.danger { color: #FF6961; }
+.tb-dialog-btn.focus { background: #FFFFFF; color: #1C1C1E; -webkit-transform: scale(1.03); transform: scale(1.03); box-shadow: 0 16px 28px rgba(0,0,0,0.4); }
+.tb-dialog-btn.danger.focus { color: #D70015; font-weight: 600; }
+
+/* ---------- Start-up and opening ---------- */
+.tb-overlay { position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 30; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; background: #141416; }
+.tb-overlay-start { background: radial-gradient(1200px 800px at 50% 40%, #26262A 0%, #111113 70%); }
+.tb-overlay-logo { width: 200px; height: 200px; display: block; }
+.tb-overlay-start .tb-spinner { margin-top: 72px; }
+.tb-spinner { display: block; -webkit-animation: tb-spin 0.9s linear infinite; animation: tb-spin 0.9s linear infinite; }
+.tb-pill .tb-spinner, .tb-note-busy .tb-spinner { margin-top: 0; }
 @-webkit-keyframes tb-spin { to { -webkit-transform: rotate(360deg); } }
 @keyframes tb-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .tb-spinner { -webkit-animation-duration: 3s; animation-duration: 3s; } }
-.tb-overlay-name { margin: 44px 0 0; font-size: 50px; font-weight: 400; }
-.tb-overlay-hint { margin: 20px 0 0; font-size: 33px; line-height: 1.45; color: rgba(255,255,255,0.6); text-align: center; max-width: 1100px; }
 
-/* Error banner */
-.tb-error { position: absolute; left: 120px; right: 120px; bottom: 60px; z-index: 11; padding: 26px 34px; border-radius: 20px;
-    font-size: 30px; line-height: 1.4; color: #FFFFFF; background: rgba(220,38,38,0.85); }
+@media (prefers-reduced-motion: reduce) {
+    .tb-spinner { -webkit-animation-duration: 3s; animation-duration: 3s; }
+    .tb-tile, .tb-tiles, .tb-row, .tb-field, .tb-gear, .tb-dialog-btn { -webkit-transition: none; transition: none; }
+    .tb-fade-in { -webkit-animation: none; animation: none; }
+}

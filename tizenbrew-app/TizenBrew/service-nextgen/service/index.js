@@ -426,6 +426,15 @@ module.exports.onStart = function () {
                     }
                     break;
                 }
+                case Events.GetConfig: {
+                    // The current choices, for Settings to show.
+                    const config = readConfig();
+                    wsConn.send(wsConn.Event(Events.GetConfig, {
+                        autoLaunchModule: config.autoLaunchModule,
+                        autoLaunchServiceList: config.autoLaunchServiceList
+                    }));
+                    break;
+                }
                 case Events.Ready: {
                     wsConn.isReady = true;
                     services.set('wsConn', wsConn);

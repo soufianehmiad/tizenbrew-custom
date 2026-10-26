@@ -1,36 +1,56 @@
-// Icons for apps (modules). Modules don't ship icons, so known ones are matched by package
-// name and shown with their official logo; anything else gets a coloured letter tile.
-import youtubeIcon from '../assets/youtube-icon.svg'; // official, play button from gstatic.com/youtube/img/branding (vector)
+// What each app looks like: tile colours, glyph, the photo behind it on Home, and its splash.
+// Modules don't ship artwork, so known ones are matched by package name; any other app gets
+// its first letter on a graphite tile and a neutral backdrop.
 import youtubeLogo from '../assets/youtube-logo-dark.svg'; // official, gstatic.com/youtube/img/branding (dark-mode logo)
-import jellyfinIcon from '../assets/jellyfin.svg'; // official, github.com/jellyfin/jellyfin-ux
-import stremioIcon from '../assets/stremio.png';   // official, web.stremio.com manifest
-import { NEUTRAL_TINT } from './ui.jsx';
+import tubePhoto from '../assets/shelf-tube.jpg';       // Unsplash licence (photo-1478720568477)
+import tubeBlur from '../assets/shelf-tube-blur.png';
+import glowPhoto from '../assets/shelf-glow.jpg';       // Unsplash licence (photo-1757206022907)
+import glowBlur from '../assets/shelf-glow-blur.png';
+import { Play, Bulb, Plus, Jellyfin, Twitch } from './icons.jsx';
+import { appLabel } from './ui.jsx';
 
 const KNOWN = [
-    // splash: what the app's own TV app shows while it starts (TizenTube opens like the YouTube app).
-    // tile: Home screen tile colour and logo size. YouTube's icon sits on YouTube red, so only its white
-    // play triangle shows, as on YouTube's own tiles.
-    { match: /^@foxreis\/tizentube$/i, icon: youtubeIcon, tint: '255,0,51', size: 260, tile: { bg: '#FF0000', size: 150 }, splash: { img: youtubeLogo, width: 440, bg: '#0F0F0F' } },
-    { match: /jellyfin/i, icon: jellyfinIcon, tint: '170,92,195', size: 236, tile: { bg: '#101828', size: 150 } },
-    { match: /stremio/i, icon: stremioIcon, tint: '123,91,245', size: 248, tile: { bg: '#2A1E5C', size: 160 } }
+    {
+        match: /^(npm\/)?@foxreis\/tizentube$/i, glyph: Play, scale: 1, lineKey: 'apps.tizentube',
+        face: 'linear-gradient(180deg, #FF453A 0%, #D70015 100%)',
+        photo: tubePhoto, blur: tubeBlur, pos: '50% 46%',
+        splash: { img: youtubeLogo, width: 440, bg: '#0F0F0F' }
+    },
+    {
+        match: /tizenglow/i, glyph: Bulb, scale: 1.08, lineKey: 'apps.tizenglow',
+        face: 'linear-gradient(135deg, #FF9F0A 0%, #FF375F 50%, #BF5AF2 100%)',
+        photo: glowPhoto, blur: glowBlur, pos: '50% 40%'
+    },
+    {
+        match: /jellyfin/i, glyph: Jellyfin, scale: 1.04, lineKey: 'apps.jellyfin',
+        face: 'linear-gradient(180deg, #1DB4E8 0%, #0090C8 100%)', wash: ['#00A4DC', '#AA5CC3']
+    },
+    {
+        match: /twitch|twizen/i, glyph: Twitch, scale: 1, lineKey: 'apps.twitch',
+        face: 'linear-gradient(180deg, #A06BFF 0%, #7B33F0 100%)', wash: ['#9146FF', '#5A2DB8']
+    }
 ];
 
-const COLORS = ['37,99,235', '124,58,237', '219,39,119', '234,88,12', '22,163,74', '8,145,178'];
+const UNKNOWN = { face: 'linear-gradient(180deg, #7C7C82 0%, #5A5A60 100%)', wash: ['#8E8E93', '#3A3A3C'] };
+export const ADD_APP = { face: 'linear-gradient(180deg, #48484A 0%, #3A3A3C 100%)', glyph: Plus, scale: 0.86, wash: ['#3E7BFA', '#1B3F99'] };
+
+// Apps offered under "Get more apps". Only apps with public source code; each line says why.
+export const CURATED = [
+    // Automated build of the official Jellyfin TV app (github.com/mibmo/jellyfin-tizen-npm-publish). No background service.
+    { fullName: 'npm/@mibmo/jellyfin-tizen', name: '@mibmo/jellyfin-tizen', appName: 'Jellyfin' },
+    // github.com/GForceWeb/smarttv-twitch-hls, based on the long-running SmartTwitchTV project.
+    { fullName: 'npm/@gforceweb/smarttv-twitch-hls', name: '@gforceweb/smarttv-twitch-hls', appName: 'Twitch' }
+];
 
 function known(module) {
-    return KNOWN.find(k => k.match.test((module && module.name) || ''));
+    const id = (module && (module.fullName || module.name)) || '';
+    return KNOWN.find(k => k.match.test(id) || k.match.test((module && module.name) || ''));
 }
 
-function letterColor(module) {
-    const name = (module && (module.appName || module.name)) || '?';
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
-    return COLORS[hash % COLORS.length];
-}
-
-export function moduleIcon(module) {
-    const k = known(module);
-    return k ? k.icon : null;
+// Everything the interface needs to draw an app.
+export function appLook(module) {
+    if (module === 'add') return ADD_APP;
+    return known(module) || UNKNOWN;
 }
 
 export function moduleSplash(module) {
@@ -38,29 +58,22 @@ export function moduleSplash(module) {
     return k && k.splash ? k.splash : null;
 }
 
-// Home screen tile: flat square in the app's colour (letter tiles: their letter colour).
-export function moduleTile(module) {
-    const k = known(module);
-    if (k && k.tile) return k.tile;
-    return { bg: `rgb(${module ? letterColor(module) : NEUTRAL_TINT})`, size: 0 };
-}
-
-export function moduleTint(module) {
-    const k = known(module);
-    return k ? k.tint : (module ? letterColor(module) : NEUTRAL_TINT);
-}
-
-export default function ModuleIcon({ module, size, plain }) {
-    const k = known(module);
-    if (k) {
-        const s = size || k.size;
-        return <img src={k.icon} alt="" style={{ width: s + 'px', height: s + 'px', objectFit: 'contain', display: 'block' }} />;
-    }
-    const name = (module && (module.appName || module.name)) || '?';
-    // plain: just the letter, for a tile that already has the colour.
+// The coloured face of an app: tiles on Home, small icons in lists, the big icon on pages.
+// w/h in px; the glyph is sized from the shorter side.
+export function AppFace({ module, width, height, radius, glyph, style, className }) {
+    const look = appLook(module);
+    const g = Math.round((glyph || Math.min(width, height) * 0.46) * (look.scale || 1));
+    const name = (module && module !== 'add' && appLabel(module)) || '?';
+    const Glyph = look.glyph;
     return (
-        <span className={plain ? 'tb-letter tb-letter-plain' : 'tb-letter'} style={plain ? null : { background: `rgb(${letterColor(module)})` }}>
-            {name.trim().charAt(0).toUpperCase()}
+        <span aria-hidden="true" className={className} style={Object.assign({
+            width: width + 'px', height: height + 'px', borderRadius: (radius == null ? 22 : radius) + 'px',
+            background: look.face, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#FFFFFF', flexShrink: 0
+        }, style)}>
+            {Glyph ? <Glyph size={g} /> : <span style={{ fontSize: Math.round(g * 1.02) + 'px', fontWeight: 600, lineHeight: 1 }}>{name.replace(/^@[^/]+\//, '').trim().charAt(0).toUpperCase()}</span>}
         </span>
     );
 }
+
+export default AppFace;

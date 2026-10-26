@@ -1,4 +1,4 @@
-import { LocationProvider, ErrorBoundary, Router, Route } from 'preact-iso';
+import { LocationProvider, ErrorBoundary, Router, Route, useLocation } from 'preact-iso';
 import TBIcon from './assets/tizenbrew-app-icon.svg';
 import Home from './pages/Home.jsx';
 import ModuleManager, { AddModule } from './pages/ModuleManager.jsx';
@@ -10,9 +10,9 @@ import Settings, { Change } from './pages/Settings.jsx';
 import About from './pages/About.jsx';
 import './components/i18n.js';
 import UserAgentSettings from './pages/UserAgentSettings.jsx';
-import ModuleIcon, { moduleSplash } from './components/ModuleIcon.jsx';
-import { Spinner, setBackdropTint, NEUTRAL_TINT } from './components/ui.jsx';
-import { useTranslation } from 'react-i18next';
+import AppFace, { moduleSplash } from './components/ModuleIcon.jsx';
+import ErrorBanner from './components/ErrorBanner.jsx';
+import { Spinner, BASE } from './components/ui.jsx';
 
 // The interface is laid out at 1920x1080; scale it to whatever viewport the TV reports.
 function fitScreen() {
@@ -22,31 +22,32 @@ function fitScreen() {
   el.style.transform = Math.abs(scale - 1) < 0.001 ? '' : `scale(${scale})`;
 }
 
+// Errors: on Home the banner takes the caption's place (Home draws it); elsewhere it sits at the bottom.
+function PageError({ error }) {
+  const loc = useLocation();
+  const onHome = loc.path === BASE || loc.path === BASE + '/';
+  if (!error.message || onHome) return null;
+  return <ErrorBanner error={error} className="tb-banner tb-banner-toast" />;
+}
+
 export default function App() {
   const context = useContext(GlobalStateContext);
-  const { t } = useTranslation();
   window.dispatch = context.dispatch;
   window.state = context.state;
   const shared = context.state.sharedData;
 
   useEffect(() => {
     if (shared.error.disappear) {
-      setTimeout(() => {
-        context.dispatch({
-          type: 'SET_ERROR',
-          payload: {
-            message: null,
-            disappear: false
-          }
-        });
-      }, 5000);
+      const timer = setTimeout(() => {
+        context.dispatch({ type: 'SET_ERROR', payload: { message: null, disappear: false } });
+      }, 6000);
+      return () => clearTimeout(timer);
     }
-  }, [shared.error.disappear]);
+  }, [shared.error.disappear, shared.error.message]);
 
   useEffect(() => {
     fitScreen();
     window.addEventListener('resize', fitScreen);
-    setBackdropTint(NEUTRAL_TINT);
     if (!window.setClient) {
       startService(context);
       window.setClient = true;
@@ -64,16 +65,12 @@ export default function App() {
   // unless an error needs to be read.
   const starting = !shared.modules && !shared.error.message;
   const opening = shared.opening;
+  const splash = opening && moduleSplash(opening);
 
   return (
     <ErrorBoundary>
       <LocationProvider>
         <div className="tb-screen">
-          <div id="tb-backdrop" className="tb-backdrop" aria-hidden="true"></div>
-          <Header />
-          {shared.error.message && (
-            <div className="tb-error" role="alert">{/\s/.test(shared.error.message) ? shared.error.message : t(shared.error.message, shared.error.args)}</div>
-          )}
           <Router>
             <Route component={Home} path="/tizenbrew-ui/dist/index.html" />
             <Route component={ModuleManager} path="/tizenbrew-ui/dist/index.html/module-manager" />
@@ -83,18 +80,20 @@ export default function App() {
             <Route component={UserAgentSettings} path="/tizenbrew-ui/dist/index.html/settings/change-ua" />
             <Route component={About} path="/tizenbrew-ui/dist/index.html/about" />
           </Router>
+          <Header />
+          <PageError error={shared.error} />
           {opening && (
             // Like the app's own launch screen: its logo on a plain dark background, nothing else.
-            <div className="tb-overlay" style={{ background: moduleSplash(opening) ? moduleSplash(opening).bg : '#000000' }}>
-              {moduleSplash(opening)
-                ? <img src={moduleSplash(opening).img} alt="" style={{ width: moduleSplash(opening).width + 'px', display: 'block' }} />
-                : <ModuleIcon module={opening} size={230} />}
+            <div className="tb-overlay" style={{ background: splash ? splash.bg : '#141416' }}>
+              {splash
+                ? <img src={splash.img} alt="" style={{ width: splash.width + 'px', display: 'block' }} />
+                : <AppFace module={opening} width={504} height={303} radius={34} glyph={140} />}
             </div>
           )}
           {!opening && starting && (
-            <div className="tb-overlay">
-              <img src={TBIcon} className="tb-overlay-logo" alt="" />
-              <Spinner />
+            <div className="tb-overlay tb-overlay-start" role="status">
+              <img src={TBIcon} className="tb-overlay-logo" alt="TizenBrew" />
+              <Spinner size={56} />
             </div>
           )}
         </div>
@@ -124,7 +123,7 @@ function startService(context) {
         window.location.reload();
       },
       function (e) {
-        alert("Launch Service failed: " + e.message);
+        context.dispatch({ type: 'SET_ERROR', payload: { message: 'Launch Service failed: ' + e.message, disappear: false } });
       }
     );
   }

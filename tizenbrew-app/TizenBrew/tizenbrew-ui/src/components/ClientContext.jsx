@@ -9,6 +9,8 @@ const initialState = {
             tizenDebug: false
         },
         modules: null,
+        // From the service: { autoLaunchModule, autoLaunchServiceList }
+        config: null,
         state: null,
         opening: null,
         error: {
@@ -26,6 +28,8 @@ function reducer(state, action) {
         case 'SET_CLIENT':
             if (state.client) return state;
             return { ...state, client: action.payload };
+        case 'SET_CONFIG':
+            return { ...state, sharedData: { ...state.sharedData, config: action.payload } };
         case 'SET_MODULES':
             return { ...state, sharedData: { ...state.sharedData, modules: action.payload } };
         case 'SET_DEBUG_STATUS':

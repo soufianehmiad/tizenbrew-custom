@@ -3,6 +3,7 @@ import './index.css'
 import App from './app.jsx'
 import { GlobalStateProvider } from './components/ClientContext.jsx'
 import { init, setFocus } from '@noriginmedia/norigin-spatial-navigation';
+import { handleBackOverride } from './components/ui.jsx';
 
 init({ });
 
@@ -11,7 +12,7 @@ init({ });
 function restoreFocus() {
     setTimeout(() => {
         if (document.querySelector('.focus')) return;
-        const el = document.querySelector('.tb-main [data-fk], .tb-apps [data-fk], [data-fk]');
+        const el = document.querySelector('.tb-page-rows [data-fk], .tb-rows [data-fk], [data-fk]');
         if (el) setFocus(el.getAttribute('data-fk'));
     }, 150);
 }
@@ -39,12 +40,24 @@ window.tbGoBack = function () {
 };
 
 window.shouldDisableAutoLaunch = false;
+const typing = () => document.activeElement && document.activeElement.tagName === 'INPUT';
 window.addEventListener('keydown', (e) => {
     if (e.keyCode === 13) {
+        // While typing, OK belongs to the keyboard (and the OK that closed it isn't a second press).
+        if (typing() || Date.now() - (window.tbInputDone || 0) < 400) return;
         document.querySelector('.focus')?.click();
     } else if (e.keyCode === 10009) {
+        // Back while typing only closes the keyboard (the page stays).
+        if (typing()) {
+            window.tbInputBack = Date.now();
+            document.activeElement.blur();
+            return;
+        }
+        // An open dialog closes first.
+        if (handleBackOverride()) return;
         // Already handled (e.g. the keyboard just closed with Back): don't go back again or exit.
         if (Date.now() - window.tbLastBack < 500) return;
+        if (Date.now() - (window.tbInputBack || 0) < 500) return;
         if (location.pathname !== HOME) {
             window.tbGoBack();
         } else {

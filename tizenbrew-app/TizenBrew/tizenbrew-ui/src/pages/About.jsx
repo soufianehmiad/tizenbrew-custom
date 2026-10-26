@@ -1,30 +1,39 @@
-import { useContext } from 'react';
+import { useContext, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useFocusable } from '@noriginmedia/norigin-spatial-navigation';
 import { GlobalStateContext } from '../components/ClientContext.jsx';
-import { SettingsLayout } from '../components/ui.jsx';
-import TBIcon from '../assets/tizenbrew-app-icon.svg';
+import { InfoRow, SettingsPage } from '../components/ui.jsx';
+import { LogoIcon } from './ModuleManager.jsx';
+import { appVersion } from './Settings.jsx';
+
+function cap(key) {
+    try { return tizen.systeminfo.getCapability(key); } catch (e) { return ''; }
+}
+
+// Short status words instead of the service's full sentences.
+const STATUS = {
+    'service.connected': 'about.connected',
+    'service.alreadyRunning': 'about.running',
+    'service.started': 'about.starting'
+};
 
 export default function About() {
-    const tizenVersion = tizen.systeminfo.getCapability('http://tizen.org/feature/platform.version');
-    const tvModel = tizen.systeminfo.getCapability('http://tizen.org/system/model_name');
-    const appVersion = tizen.application.getCurrentApplication().appInfo.version;
     const { t } = useTranslation();
-    // The service status the original header showed ("Service connected to the app." etc.).
     const status = useContext(GlobalStateContext).state.sharedData.state;
+    // Nothing to select here; an invisible anchor keeps the remote working (Back returns).
+    const { ref, focusSelf } = useFocusable({ focusKey: 'about-anchor' });
+    useEffect(() => { focusSelf(); }, []);
 
     return (
-        <SettingsLayout active="about" focusNav>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '40px' }}>
-                <img src={TBIcon} alt="" style={{ width: '140px', height: '140px', marginRight: '36px' }} />
-                <div>
-                    <div style={{ fontSize: '52px' }}>TizenBrew</div>
-                    <div className="tb-muted" style={{ fontSize: '30px', marginTop: '8px' }}>{t('tb.tagline')}</div>
-                </div>
+        <SettingsPage title={t('tb.about')} icon={<LogoIcon />}>
+            <div ref={ref} className="tb-about-head">
+                <div className="tb-about-name">TizenBrew</div>
+                <div className="tb-about-tagline">{t('tb.tagline')}</div>
             </div>
-            <div className="tb-info"><span>{t('tb.version')}</span><span className="tb-muted">{appVersion}</span></div>
-            <div className="tb-info"><span>{t('tb.tizenVersion')}</span><span className="tb-muted">{tizenVersion}</span></div>
-            <div className="tb-info"><span>{t('tb.tvModel')}</span><span className="tb-muted">{tvModel}</span></div>
-            {status && <div className="tb-info"><span>{t('tb.status')}</span><span className="tb-muted">{t(status)}</span></div>}
-        </SettingsLayout>
-    )
+            <InfoRow label={t('tb.version')} value={appVersion()} />
+            <InfoRow label={t('tb.tizenVersion')} value={cap('http://tizen.org/feature/platform.version')} />
+            <InfoRow label={t('tb.tvModel')} value={cap('http://tizen.org/system/model_name')} />
+            {status && <InfoRow label={t('tb.status')} value={STATUS[status] ? t(STATUS[status]) : t(status)} />}
+        </SettingsPage>
+    );
 }

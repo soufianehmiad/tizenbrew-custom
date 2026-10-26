@@ -171,6 +171,19 @@ function connect(origin) {
     assert.ok(third.some(m => m.fullName === 'npm/@foxreis/tizentube'));
   });
 
+  await check('GetConfig reports the current choices (shown in Settings)', async () => {
+    ws.send(JSON.stringify({ type: 10, payload: { action: 'autolaunch', module: 'npm/@foxreis/tizentube' } }));
+    ws.send(JSON.stringify({ type: 10, payload: { action: 'autolaunchService', module: 'npm/@foxreis/tizentube' } }));
+    await wait(300);
+    const cfg = (await ask({ type: 11 }, 11, 5000)).payload;
+    assert.deepStrictEqual(cfg, { autoLaunchModule: 'npm/@foxreis/tizentube', autoLaunchServiceList: ['npm/@foxreis/tizentube'] });
+    ws.send(JSON.stringify({ type: 10, payload: { action: 'autolaunch', module: '' } }));
+    ws.send(JSON.stringify({ type: 10, payload: { action: 'autolaunchService', module: '' } }));
+    await wait(300);
+    const off = (await ask({ type: 11 }, 11, 5000)).payload;
+    assert.deepStrictEqual(off, { autoLaunchModule: '', autoLaunchServiceList: [] });
+  });
+
   await check('Background services setting: a single stored name is accepted', () => {
     fs.writeFileSync(configPath, JSON.stringify({ modules: ['npm/@foxreis/tizentube'], autoLaunchServiceList: 'npm/@foxreis/tizentube', autoLaunchModule: '' }));
     const { readConfig } = require(path.join(svc, 'utils/configuration.js'));

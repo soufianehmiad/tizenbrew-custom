@@ -1,9 +1,9 @@
 // Shared building blocks for the TV interface. Every focusable element gets the "focus"
 // class when selected: main.jsx clicks document.querySelector('.focus') on the OK key.
-import { useFocusable } from '@noriginmedia/norigin-spatial-navigation';
-import { useEffect } from 'react';
-import { useLocation } from 'preact-iso';
-import { useTranslation } from 'react-i18next';
+import { useFocusable, FocusContext, setFocus, getCurrentFocusKey } from '@noriginmedia/norigin-spatial-navigation';
+import { useEffect, useRef } from 'react';
+import { Check } from './icons.jsx';
+import tubeBlur from '../assets/shelf-tube-blur.png';
 
 export const BASE = '/tizenbrew-ui/dist/index.html';
 
@@ -11,8 +11,13 @@ export const BASE = '/tizenbrew-ui/dist/index.html';
 // so show their package name instead to tell them apart.
 export function appLabel(module) {
     if (!module) return '';
-    if (module.appName === 'Unknown Module') return module.fullName || module.name;
+    if (module.appName === 'Unknown Module') return module.name || module.fullName;
     return module.appName || module.name;
+}
+
+// A module that can't be opened: its download failed or it isn't a TizenBrew module.
+export function isBroken(module) {
+    return !module || module.failed || module.appName === 'Unknown Module' || (!module.appPath && !module.evaluateScriptOnDocumentStart);
 }
 
 export function cx(...classes) {
@@ -20,9 +25,9 @@ export function cx(...classes) {
 }
 
 // useFocusable plus optional first focus and keeping the item on screen
-// (noScroll: the caller scrolls itself, like the home row).
-export function useTvFocus(autoFocus, noScroll) {
-    const f = useFocusable();
+// (noScroll: the caller scrolls itself, like the Home rows).
+export function useTvFocus(autoFocus, noScroll, config) {
+    const f = useFocusable(config || {});
     useEffect(() => {
         if (autoFocus) f.focusSelf();
     }, []);
@@ -34,100 +39,135 @@ export function useTvFocus(autoFocus, noScroll) {
     return f;
 }
 
-// Background light tinted by the selected app ("r,g,b").
-export function setBackdropTint(rgb) {
-    const el = document.getElementById('tb-backdrop');
-    if (!el) return;
-    el.style.background =
-        `radial-gradient(45% 55% at 20% 70%, rgba(${rgb},0.28), rgba(${rgb},0) 70%),` +
-        `radial-gradient(40% 50% at 75% 85%, rgba(${rgb},0.16), rgba(${rgb},0) 70%)`;
+// Back key: a dialog (or anything else) can take over Back while it is open.
+const backHandlers = [];
+export function handleBackOverride() {
+    if (!backHandlers.length) return false;
+    backHandlers[backHandlers.length - 1]();
+    return true;
 }
-export const NEUTRAL_TINT = '110,130,175';
+function useBackOverride(fn) {
+    const ref = useRef(fn);
+    ref.current = fn;
+    useEffect(() => {
+        const h = () => ref.current();
+        backHandlers.push(h);
+        return () => { const i = backHandlers.indexOf(h); if (i >= 0) backHandlers.splice(i, 1); };
+    }, []);
+}
 
-export function Chevron({ back }) {
+export function Chevron() {
     return (
-        <svg aria-hidden="true" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d={back ? 'M15 6l-6 6 6 6' : 'M9 6l6 6-6 6'}></path>
+        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" className="tb-chevron">
+            <path d="M9 5l7 7-7 7"></path>
         </svg>
     );
 }
 
-export function Spinner() {
+export function Spinner({ size = 56 }) {
     return (
-        <svg className="tb-spinner" aria-hidden="true" width="120" height="120" viewBox="0 0 50 50">
-            <circle cx="25" cy="25" r="20" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="2.5"></circle>
-            <path d="M25 5 A20 20 0 0 1 45 25" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"></path>
+        <svg className="tb-spinner" aria-hidden="true" width={size} height={size} viewBox="0 0 50 50">
+            <circle cx="25" cy="25" r="21" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="4"></circle>
+            <path d="M25 4 a21 21 0 0 1 21 21" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"></path>
         </svg>
     );
 }
 
-// A settings-style row: label on the left, optional icon/value and a chevron on the right.
-// action: a word shown instead of the chevron when selecting the row does something right away (e.g. Remove).
-export function Row({ label, start, value, icon, action, onClick, autoFocus, noChevron }) {
-    const { ref, focused, focusKey } = useTvFocus(autoFocus);
+// Settings rows. The selected row turns white and lifts slightly.
+function useRow(autoFocus, onFocused) {
+    return useTvFocus(autoFocus, false, { onFocus: () => onFocused && onFocused() });
+}
+
+export function NavRow({ label, value, start, onClick, autoFocus, onFocused, danger }) {
+    const { ref, focused, focusKey } = useRow(autoFocus, onFocused);
     return (
-        <div ref={ref} data-fk={focusKey} onClick={onClick} className={cx('tb-row', focused && 'focus')}>
+        <div ref={ref} data-fk={focusKey} onClick={onClick} role="button" className={cx('tb-row', focused && 'focus')}>
+            <span className="tb-row-start">{start}<span className="tb-row-label" style={danger ? { color: focused ? '#D70015' : '#FF6961' } : null}>{label}</span></span>
+            <span className="tb-row-end">{value != null && value !== '' && <span className="tb-row-value">{value}</span>}<Chevron /></span>
+        </div>
+    );
+}
+
+export function ChoiceRow({ label, checked, start, value, onClick, autoFocus, onFocused }) {
+    const { ref, focused, focusKey } = useRow(autoFocus, onFocused);
+    return (
+        <div ref={ref} data-fk={focusKey} onClick={onClick} role="radio" aria-checked={checked ? 'true' : 'false'}
+            className={cx('tb-row', focused && 'focus')}>
             <span className="tb-row-start">{start}<span className="tb-row-label">{label}</span></span>
             <span className="tb-row-end">
-                {icon && <img src={icon} className="tb-row-icon" alt="" />}
-                {value && <span>{value}</span>}
-                {action ? <span className="tb-row-action">{action}</span> : !noChevron && <Chevron />}
+                {value && <span className="tb-row-value">{value}</span>}
+                <span className={cx('tb-check', checked && 'on')}><Check size={30} /></span>
             </span>
         </div>
     );
 }
 
-const NAV_ICONS = {
-    settings: (
-        <svg aria-hidden="true" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-        </svg>
-    ),
-    apps: (
-        <svg aria-hidden="true" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3.5" y="3.5" width="7" height="7" rx="2"></rect><rect x="13.5" y="3.5" width="7" height="7" rx="2"></rect>
-            <rect x="3.5" y="13.5" width="7" height="7" rx="2"></rect><path d="M17 14v6M14 17h6"></path>
-        </svg>
-    ),
-    about: (
-        <svg aria-hidden="true" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4M12 8h.01"></path>
-        </svg>
-    )
-};
-
-function NavItem({ id, label, active, autoFocus }) {
-    const loc = useLocation();
-    const { ref, focused, focusKey } = useTvFocus(autoFocus);
-    const routes = { settings: '/settings', apps: '/module-manager', about: '/about' };
-    // Side-menu hops replace the history entry, so Back always returns to Home in one press.
-    const go = () => { if (!active) loc.route(BASE + routes[id], true); };
+export function InfoRow({ label, value }) {
     return (
-        <div ref={ref} data-fk={focusKey} onClick={go}
-            className={cx('tb-nav', active && 'active', focused && 'focus')}>
-            {NAV_ICONS[id]}<span>{label}</span>
+        <div className="tb-row tb-row-info">
+            <span className="tb-row-label">{label}</span>
+            <span className="tb-row-value">{value}</span>
         </div>
     );
 }
 
-// Side menu + content column, used by Settings, Apps (remove/add) and About.
-export function SettingsLayout({ active, title, children, focusNav }) {
-    const { t } = useTranslation();
-    useEffect(() => { setBackdropTint(NEUTRAL_TINT); }, []);
+export function RowGap() {
+    return <div className="tb-row-gap" aria-hidden="true"></div>;
+}
+
+export function Note({ children, role }) {
+    return <p className="tb-note" role={role}>{children}</p>;
+}
+
+// Settings-style page: centred title, the page's big icon on the left, rows on the right.
+// The backdrop is the dimmed, blurred photo from Home so it reads as the same place.
+// overlay: a dialog, drawn over the whole page (the rows column clips its content).
+export function SettingsPage({ title, icon, children, overlay }) {
     return (
-        <div>
-            <nav className="tb-side" aria-label="Settings sections">
-                <NavItem id="settings" label={t('tb.settings')} active={active === 'settings'} autoFocus={focusNav && active === 'settings'} />
-                <NavItem id="apps" label={t('tb.apps')} active={active === 'apps'} autoFocus={focusNav && active === 'apps'} />
-                <NavItem id="about" label={t('tb.about')} active={active === 'about'} autoFocus={focusNav && active === 'about'} />
-            </nav>
-            <div className="tb-divider" aria-hidden="true"></div>
-            <main className="tb-main">
-                {title && <h2 className="tb-heading">{title}</h2>}
-                {children}
-            </main>
+        <div className="tb-page">
+            <div className="tb-page-bg" aria-hidden="true" style={{ backgroundImage: `url(${tubeBlur})` }}></div>
+            <h1 className="tb-page-title">{title}</h1>
+            <div className="tb-page-icon" aria-hidden="true">{icon}</div>
+            <div className="tb-page-rows">{children}</div>
+            {overlay}
         </div>
+    );
+}
+
+// A question with buttons. Keeps the remote inside it and closes on Back; focus returns to
+// whatever was selected before it opened.
+function DialogButton({ label, danger, onClick, autoFocus }) {
+    const { ref, focused, focusKey } = useTvFocus(autoFocus, true);
+    return (
+        <div ref={ref} data-fk={focusKey} onClick={onClick} role="button"
+            className={cx('tb-dialog-btn', danger && 'danger', focused && 'focus')}>{label}</div>
+    );
+}
+
+export function Dialog({ title, body, icon, actions, onClose }) {
+    const before = useRef(getCurrentFocusKey());
+    const { ref, focusKey } = useFocusable({ isFocusBoundary: true, trackChildren: true, focusable: true });
+    useBackOverride(close);
+    function close() {
+        onClose();
+        const key = before.current;
+        setTimeout(() => { try { if (key) setFocus(key); } catch (e) { } }, 0);
+    }
+    return (
+        <FocusContext.Provider value={focusKey}>
+            <div className="tb-dim" aria-hidden="true"></div>
+            <div ref={ref} className="tb-dialog" role="alertdialog" aria-label={title}>
+                {icon && <div className="tb-dialog-icon">{icon}</div>}
+                <h2 className="tb-dialog-title">{title}</h2>
+                {body && <p className="tb-dialog-body">{body}</p>}
+                <div className="tb-dialog-actions">
+                    {actions.map((a, i) => (
+                        <DialogButton key={a.label} label={a.label} danger={a.danger} autoFocus={i === 0}
+                            onClick={() => { if (a.keepOpen) a.onClick(); else { close(); a.onClick && a.onClick(); } }} />
+                    ))}
+                </div>
+            </div>
+        </FocusContext.Provider>
     );
 }

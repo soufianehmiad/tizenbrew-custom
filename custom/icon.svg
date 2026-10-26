@@ -1,9 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- TizenBrew "Apps +" icon: three apps and a fourth being added.
-       Full-bleed solid blue square, like the other app tiles on the Samsung Home bar. -->
+  <!-- TizenBrew: a flask (brew) holding apps, with a plus for adding one. Flat, full-bleed, no corners. -->
+  <defs>
+    <mask id="tb-flask" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
+      <g transform="translate(256 262) scale(0.86) translate(-256 -262)">
+        <rect x="182" y="84" width="148" height="40" rx="20" fill="#fff"/>
+        <path d="M206 112 L206 206 L116 392 Q104 432 148 432 L364 432 Q408 432 396 392 L306 206 L306 112 Z" fill="#fff" stroke="#fff" stroke-width="28" stroke-linejoin="round"/>
+        <circle cx="268" cy="166" r="15" fill="none" stroke="#000" stroke-width="9"/>
+        <circle cx="236" cy="200" r="9" fill="#000"/>
+        <rect x="193" y="286" width="56" height="56" rx="12" fill="#000"/><rect x="263" y="286" width="56" height="56" rx="12" fill="#000"/><rect x="193" y="356" width="56" height="56" rx="12" fill="#000"/>
+        <path d="M291 357 V411 M264 384 H318" stroke="#000" stroke-width="16" stroke-linecap="round"/>
+      </g>
+    </mask>
+  </defs>
   <rect width="512" height="512" fill="#3E7BFA"/>
-  <rect x="128" y="128" width="112" height="112" rx="32" fill="#FFFFFF"/>
-  <rect x="272" y="128" width="112" height="112" rx="32" fill="#FFFFFF"/>
-  <rect x="128" y="272" width="112" height="112" rx="32" fill="#FFFFFF"/>
-  <path d="M328 290 V366 M290 328 H366" stroke="#FFFFFF" stroke-width="22" stroke-linecap="round"/>
+  <rect width="512" height="512" fill="#FFFFFF" mask="url(#tb-flask)"/>
 </svg>
