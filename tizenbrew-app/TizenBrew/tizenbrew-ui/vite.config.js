@@ -8,9 +8,13 @@ export default defineConfig({
   base: '/tizenbrew-ui/dist/',
   plugins: [
     preact(),
+    // Legacy build only. The TV opens this page from file://, where the plugin's "modern browser"
+    // check never passes, so with modern chunks too BOTH copies of the app ran: every key was handled
+    // twice (Back went back two pages) and two clients talked to the service.
     legacy({
       targets: ['chrome 47'],
       renderLegacyChunks: true,
+      renderModernChunks: false,
       polyfills: true
     }),
     createExternal({
