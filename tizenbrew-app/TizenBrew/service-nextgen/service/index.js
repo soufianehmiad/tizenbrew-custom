@@ -346,8 +346,9 @@ module.exports.onStart = function () {
                     currentModule.serviceFile = mdl.serviceFile;
 
                     if (mdl.packageType === 'app') {
-                        inDebug.webDebug = false;
-                        inDebug.tizenDebug = false;
+                        // Upstream cleared inDebug here, so coming back from an app made TizenBrew relaunch
+                        // itself (close + reopen). The debug session survives the navigation; if it really
+                        // drops, the debugger's 'disconnect' handler clears inDebug.
                         // App pages get no script: don't keep the last mod's (e.g. TizenTube's) file to inject.
                         currentModule.mainFile = '';
                         currentModule.tizenAppId = '';

@@ -2,7 +2,7 @@ import { useEffect, useContext } from 'react';
 import { useLocation } from 'preact-iso';
 import { GlobalStateContext } from './ClientContext.jsx';
 import { Events } from './WebSocketClient.js';
-import ModuleIcon from './ModuleIcon.jsx';
+import ModuleIcon, { moduleTile } from './ModuleIcon.jsx';
 import { cx, useTvFocus, appLabel, BASE } from './ui.jsx';
 import { useTranslation } from 'react-i18next';
 
@@ -43,7 +43,9 @@ function AppTile({ module, state, autoFocus }) {
   return (
     // No visible name: the logo says which app it is (the name stays for screen readers).
     <div ref={ref} data-fk={focusKey} onClick={open} className={cx('tb-app', focused && 'focus')} aria-label={appLabel(module)} role="button">
-      <span className="tb-tile"><ModuleIcon module={module} /></span>
+      <span className="tb-tile" style={{ background: moduleTile(module).bg }}>
+        <ModuleIcon module={module} size={moduleTile(module).size || undefined} plain />
+      </span>
     </div>
   );
 }
@@ -60,9 +62,9 @@ function AddTile({ autoFocus }) {
 
   return (
     <div ref={ref} data-fk={focusKey} onClick={() => loc.route(BASE + '/module-manager/add?type=npm')} className={cx('tb-app', focused && 'focus')} aria-label={t('tb.addApp')} role="button">
-      <span className="tb-tile"><span className="tb-add">
-        <svg aria-hidden="true" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="1.3" stroke-linecap="round"><path d="M12 4.5v15M4.5 12h15"></path></svg>
-      </span></span>
+      <span className="tb-tile tb-tile-add">
+        <svg aria-hidden="true" width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="1.3" stroke-linecap="round"><path d="M12 4.5v15M4.5 12h15"></path></svg>
+      </span>
     </div>
   );
 }

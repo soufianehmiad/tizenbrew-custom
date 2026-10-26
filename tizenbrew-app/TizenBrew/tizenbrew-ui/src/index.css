@@ -40,30 +40,32 @@ html, body { overflow: hidden; }
    lifted logo. No mask on the row: a mask forces the TV to repaint the whole row every frame. */
 .tb-apps { position: absolute; left: 0; right: 0; top: 440px; padding: 40px 120px 90px 120px; display: flex; flex-wrap: nowrap;
     overflow: hidden; }
-.tb-app { position: relative; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; margin-right: 24px; }
+.tb-app { position: relative; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; margin-right: 8px; }
 .tb-app.focus { outline: none; }
 
-/* Selection, Apple TV style but on the logo itself (no box behind it): the focused logo lifts
-   (rises and grows), a soft oval shadow appears under it and the other logos dim. No names under the
-   logos: the logo says which app it is. Only transform/opacity animate, on their own layers, so the TV
-   composites them without repainting (measured on the TV: 60 fps, at most the key-press frame late).
-   Logos are drawn at their selected size and shrunk when not selected: enlarging a layer made the
-   TV stretch a smaller drawing, which looked soft and glowy. */
-.tb-tile { position: relative; z-index: 1; width: 260px; height: 260px; display: flex; align-items: center; justify-content: center;
-    opacity: 0.45; -webkit-transform: translateZ(0) translateY(0) scale(0.84); transform: translateZ(0) translateY(0) scale(0.84);
+/* Tiles, Windows 8.1 style: equal flat squares with sharp corners, each in its app's colour with the
+   official logo centred (so different logo shapes still line up). The selected tile lifts with a white
+   frame and a soft shadow; the others are slightly smaller and dimmer. Tiles are drawn at their selected
+   size and shrunk otherwise (enlarging a layer blurs it), and only transform/opacity animate, which the
+   TV composites without repainting. */
+.tb-tile { position: relative; z-index: 1; width: 260px; height: 260px; box-sizing: border-box; display: flex; align-items: center;
+    justify-content: center; opacity: 0.72;
+    -webkit-transform: translateZ(0) translateY(0) scale(0.9); transform: translateZ(0) translateY(0) scale(0.9);
     will-change: transform, opacity;
     -webkit-transition: -webkit-transform 300ms cubic-bezier(0.22, 1, 0.36, 1), opacity 300ms ease;
     transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1), opacity 300ms ease; }
+.tb-tile::before { content: ''; position: absolute; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none;
+    box-shadow: inset 0 0 0 4px #FFFFFF; opacity: 0; -webkit-transition: opacity 200ms ease; transition: opacity 200ms ease; }
 .tb-app.focus .tb-tile { opacity: 1; -webkit-transform: translateZ(0) translateY(-8px) scale(1); transform: translateZ(0) translateY(-8px) scale(1); }
+.tb-app.focus .tb-tile::before { opacity: 1; }
 .tb-tile img { object-fit: contain; }
-.tb-tile .tb-letter { width: 232px; height: 232px; border-radius: 54px; font-size: 112px; }
-/* "Add app" has no logo: an outlined shape the size of a logo keeps the row even. */
-.tb-add { width: 232px; height: 232px; box-sizing: border-box; border-radius: 54px; border: 3px solid rgba(255,255,255,0.32);
-    display: flex; align-items: center; justify-content: center; }
-.tb-app.focus .tb-add { border-color: #FFFFFF; background: rgba(255,255,255,0.08); }
-/* Contact shadow under the lifted logo (works for any logo shape); drawn once, only opacity/scale change. */
-.tb-app::after { content: ''; position: absolute; z-index: 0; left: 50px; right: 50px; top: 214px; height: 24px; border-radius: 50%;
-    background: radial-gradient(closest-side, rgba(0,0,0,0.38), rgba(0,0,0,0)); pointer-events: none;
+.tb-letter-plain { width: auto; height: auto; border-radius: 0; background: none; font-size: 128px; font-weight: 600; }
+/* "Add app": an outlined tile of the same size. */
+.tb-tile-add { background: transparent; box-shadow: inset 0 0 0 3px rgba(255,255,255,0.32); }
+.tb-app.focus .tb-tile-add { background: rgba(255,255,255,0.08); }
+/* Contact shadow under the lifted tile; drawn once, only opacity/scale change. */
+.tb-app::after { content: ''; position: absolute; z-index: 0; left: 30px; right: 30px; top: 246px; height: 30px; border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(0,0,0,0.5), rgba(0,0,0,0)); pointer-events: none;
     opacity: 0; -webkit-transform: scale(0.7); transform: scale(0.7); will-change: opacity, transform;
     -webkit-transition: opacity 300ms ease, -webkit-transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
     transition: opacity 300ms ease, transform 300ms cubic-bezier(0.22, 1, 0.36, 1); }
