@@ -1,3 +1,15 @@
+> **This is a personal fork of [reisxd/TizenBrew](https://github.com/reisxd/TizenBrew) (v2.0.5), GPL-3.0.**
+> It is not the official TizenBrew; use the original unless you want these changes:
+> - New interface: app logos instead of a list, Apple TV style selection, flat Samsung-style settings.
+> - Fixes: "open app at start" (upstream issue #151), several service crashes, retries after a failed download,
+>   a TV that refuses the Developer Mode check for a while after a restart, errors shown with their real reason.
+> - `fixes/`: small fixes for apps, loaded by this TizenBrew right after the app (e.g. `fixes/@foxreis/tizentube.js`
+>   replaces missing HD thumbnails). They are fetched at each launch, so they update without reinstalling.
+> - Build, tests and install scripts: `custom/` (signing uses your own Tizen certificate profile).
+>
+> Releases of this fork can be installed with the official
+> [TizenBrew Installer](https://github.com/reisxd/TizenBrewInstaller) (GitHub option, `soufianehmiad/tizenbrew-custom`).
+
 # 🍺 TizenBrew
 
 <p align="center">

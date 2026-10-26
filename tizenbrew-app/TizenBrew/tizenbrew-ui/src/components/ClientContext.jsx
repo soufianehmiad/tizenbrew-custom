@@ -10,6 +10,7 @@ const initialState = {
         },
         modules: null,
         state: null,
+        opening: null,
         error: {
             message: null,
             dissapear: false
@@ -31,6 +32,8 @@ function reducer(state, action) {
             return { ...state, sharedData: { ...state.sharedData, debugStatus: action.payload } };
         case 'SET_STATE':
             return { ...state, sharedData: { ...state.sharedData, state: action.payload } };
+        case 'SET_OPENING':
+            return { ...state, sharedData: { ...state.sharedData, opening: action.payload } };
         case 'SET_ERROR':
             return { ...state, sharedData: { ...state.sharedData, error: action.payload } };
         default:

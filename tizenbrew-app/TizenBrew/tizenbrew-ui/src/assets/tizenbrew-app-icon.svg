@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- TizenBrew "Apps +" icon: three apps and a fourth being added.
+       Full-bleed solid blue square, like the other app tiles on the Samsung Home bar. -->
+  <rect width="512" height="512" fill="#3E7BFA"/>
+  <rect x="128" y="128" width="112" height="112" rx="32" fill="#FFFFFF"/>
+  <rect x="272" y="128" width="112" height="112" rx="32" fill="#FFFFFF"/>
+  <rect x="128" y="272" width="112" height="112" rx="32" fill="#FFFFFF"/>
+  <path d="M328 290 V366 M290 328 H366" stroke="#FFFFFF" stroke-width="22" stroke-linecap="round"/>
+</svg>

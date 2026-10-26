@@ -1,150 +1,64 @@
-import { setFocus, useFocusable } from '@noriginmedia/norigin-spatial-navigation'
-import { useEffect, useContext } from 'react';
+import { useContext } from 'react';
 import { GlobalStateContext } from '../components/ClientContext.jsx';
 import { Events } from '../components/WebSocketClient.js';
 import { useLocation } from 'preact-iso';
 import { useTranslation } from 'react-i18next';
+import { Row, SettingsLayout, appLabel, BASE } from '../components/ui.jsx';
+import ModuleIcon from '../components/ModuleIcon.jsx';
 
-function classNames(...classes) {
-    return classes.filter(Boolean).join(' ')
-}
-
-function ItemBasic({ children, onClick, shouldFocus }) {
-    const { ref, focused, focusSelf } = useFocusable();
-    useEffect(() => {
-        if (focused) {
-            ref.current.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center',
-                inline: 'center',
-            });
-        }
-
-    }, [focused, ref]);
-
-    if (shouldFocus) {
-        useEffect(() => {
-            focusSelf();
-        }, [ref]);
-    }
-
-    return (
-        <div
-            ref={ref}
-            onClick={onClick}
-            className={classNames(
-                'relative bg-gray-900 shadow-2xl rounded-3xl p-8 ring-1 ring-gray-900/10 sm:p-10 h-[35vh] w-[20vw]',
-                focused ? 'focus' : '',
-            )}
-        >
-            {children}
-        </div>
-    );
-}
 export default function Settings() {
     const { state } = useContext(GlobalStateContext);
     const loc = useLocation();
     const { t } = useTranslation();
+    const noModules = () => state.sharedData.modules?.length === 0;
 
     return (
-        <div className="relative isolate lg:px-8">
-            <div className="mx-auto flex flex-wrap justify-center gap-4 top-4 relative">
-                <ItemBasic onClick={() => {
-                    if (state.sharedData.modules?.length === 0) return alert(t('settings.noModules'));
-                    loc.route('/tizenbrew-ui/dist/index.html/settings/change?type=autolaunch');
-                }}>
-                    <h3 className='text-indigo-400 text-base/7 font-semibold'>
-                        {t('settings.autolaunch')}
-                    </h3>
-                    <p className='text-gray-300 mt-6 text-base/7'>
-                        {t('settings.autolaunchDesc')}
-                    </p>
-                </ItemBasic>
-                <ItemBasic onClick={() => {
-                    if (state.sharedData.modules?.length === 0) return alert(t('settings.noModules'));
-                    loc.route('/tizenbrew-ui/dist/index.html/settings/change?type=autolaunchService');
-                }}>
-                    <h3 className='text-indigo-400 text-base/7 font-semibold'>
-                        {t('settings.autolaunchService')}
-                    </h3>
-                    <p className='text-gray-300 mt-6 text-base/7'>
-                        {t('settings.autolaunchServiceDesc')}
-                    </p>
-                </ItemBasic>
-                <ItemBasic onClick={() => {
-                    loc.route('/tizenbrew-ui/dist/index.html/settings/change-ua');
-                }}>
-                    <h3 className='text-indigo-400 text-base/7 font-semibold'>
-                        {t('settings.useragent')}
-                    </h3>
-                    <p className='text-gray-300 mt-6 text-base/7'>
-                        {t('settings.useragentDesc')}
-                    </p>
-                </ItemBasic>
-            </div>
-        </div>
+        <SettingsLayout active="settings">
+            <Row label={t('settings.autolaunch')} autoFocus onClick={() => {
+                if (noModules()) return alert(t('settings.noModules'));
+                loc.route(BASE + '/settings/change?type=autolaunch');
+            }} />
+            <Row label={t('settings.autolaunchService')} onClick={() => {
+                if (noModules()) return alert(t('settings.noModules'));
+                loc.route(BASE + '/settings/change?type=autolaunchService');
+            }} />
+            <Row label={t('settings.useragent')} onClick={() => loc.route(BASE + '/settings/change-ua')} />
+        </SettingsLayout>
     )
 }
 
+// Choose the app (or background service) that starts with TizenBrew.
 function Change() {
     const loc = useLocation();
     const { state } = useContext(GlobalStateContext);
     const { t } = useTranslation();
+    const isService = loc.query.type === 'autolaunchService';
+    const modules = (state?.sharedData?.modules || []).filter(m => !isService || m.serviceFile);
+
+    function choose(module) {
+        state.client.send({
+            type: Events.ModuleAction,
+            payload: { action: loc.query.type, module: module ? module.fullName : '' }
+        });
+        // This page is always opened from Settings: go back to it rather than adding a history entry.
+        history.back();
+    }
 
     return (
-        <div className="relative isolate lg:px-8">
-            <div className="mx-auto flex flex-wrap justify-center gap-4 top-4 relative">
-                {state?.sharedData?.modules?.map((module, idx) => {
-                    if (loc.query.type === 'autolaunchService' && !module.serviceFile) return null;
-                    return (
-                        <ItemBasic state={state}
-                            shouldFocus={idx === 0}
-                            key={idx}
-                            onClick={() => {
-                                if (confirm(t('settings.enableAutolaunchPrompt', { packageName: module.appName }))) {
-                                    state.client.send({
-                                        type: Events.ModuleAction,
-                                        payload: {
-                                            action: loc.query.type,
-                                            module: module.fullName
-                                        }
-                                    });
-                                    loc.route('/tizenbrew-ui/dist/index.html/settings');
-                                    setFocus('sn:focusable-item-1');
-                                }
-                            }}>
-                            <h3
-                                className='text-indigo-400 text-base/7 font-semibold'
-                            >
-                                {module.appName} ({module.version})
-                            </h3>
-                            <p className='text-gray-300 mt-6 text-base/7'>
-                                {module.description}
-                            </p>
-                        </ItemBasic>
-                    )
-                })}
-                <ItemBasic
-                    shouldFocus={state?.sharedData?.modules?.length === 0}
+        <SettingsLayout active="settings" title={isService ? t('settings.autolaunchService') : t('settings.autolaunch')}>
+            {modules.map((module, idx) => (
+                <Row key={module.fullName} autoFocus={idx === 0}
+                    start={<span style={{ marginRight: '26px', display: 'flex' }}><ModuleIcon module={module} size={64} /></span>}
+                    label={appLabel(module)}
+                    value={module.version}
                     onClick={() => {
-                        if (confirm(t('settings.disableAutolaunchPrompt'))) {
-                            state.client.send({
-                                type: Events.ModuleAction,
-                                payload: {
-                                    action: loc.query.type,
-                                    module: ''
-                                }
-                            });
-                            loc.route('/tizenbrew-ui/dist/index.html/settings');
-                            setFocus('sn:focusable-item-1');
-                        }
-                    }}>
-                    <h3 className='text-indigo-400 text-base/7 font-semibold'>
-                        {t('settings.disableAutolaunch')}
-                    </h3>
-                </ItemBasic>
-            </div>
-        </div>
+                        if (confirm(t('settings.enableAutolaunchPrompt', { packageName: appLabel(module) }))) choose(module);
+                    }} />
+            ))}
+            <Row label={t('settings.disableAutolaunch')} autoFocus={modules.length === 0} noChevron onClick={() => {
+                if (confirm(t('settings.disableAutolaunchPrompt'))) choose(null);
+            }} />
+        </SettingsLayout>
     )
 }
 

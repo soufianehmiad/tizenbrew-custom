@@ -6,8 +6,12 @@ function loadModules() {
     const modules = config.modules;
 
     const modulePromises = modules.map(module => {
-        return fetch(`https://cdn.jsdelivr.net/${module}/package.json`)
-            .then(res => res.json())
+        // Time out and treat HTTP errors as failures (a hung or error response used to be taken as the module).
+        return fetch(`https://cdn.jsdelivr.net/${module}/package.json`, { timeout: 10000 })
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status} for ${module}`);
+                return res.json();
+            })
             .then(moduleJson => {
                 console
                 let moduleData;
@@ -82,6 +86,8 @@ function loadModules() {
                     keys: [],
                     moduleType: moduleMetadata.type,
                     packageType: 'app',
+                    // Download failed (offline, typo, CDN error): the service retries it on the next request.
+                    failed: true,
                     description: `Unknown module ${module}. Please check the module name and try again.`
                 }
             });

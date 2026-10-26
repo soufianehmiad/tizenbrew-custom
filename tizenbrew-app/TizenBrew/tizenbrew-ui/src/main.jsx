@@ -6,6 +6,16 @@ import { init, setFocus } from '@noriginmedia/norigin-spatial-navigation';
 
 init({ });
 
+// After Back, make sure something is selected: a page that remounts focuses its own first item;
+// if nothing has focus (e.g. the same page stayed mounted), pick the first item in the content.
+function restoreFocus() {
+    setTimeout(() => {
+        if (document.querySelector('.focus')) return;
+        const el = document.querySelector('.tb-main [data-fk], .tb-apps [data-fk], [data-fk]');
+        if (el) setFocus(el.getAttribute('data-fk'));
+    }, 150);
+}
+
 window.shouldDisableAutoLaunch = false;
 window.addEventListener('keydown', (e) => {
     if (e.keyCode === 13) {
@@ -13,7 +23,7 @@ window.addEventListener('keydown', (e) => {
     } else if (e.keyCode === 10009) {
         if (location.pathname !== '/tizenbrew-ui/dist/index.html') {
             history.back();
-            setFocus('sn:focusable-item-1');
+            restoreFocus();
         } else {
             tizen.application.getCurrentApplication().exit();
         }

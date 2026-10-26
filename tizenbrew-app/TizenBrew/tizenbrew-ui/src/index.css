@@ -2,7 +2,126 @@
 @tailwind components;
 @tailwind utilities;
 
-.focus {
-    outline: #1ca7ca solid 2px;
-    box-shadow: #2396b3 0px 0px 10px 3px;
+/* TizenBrew TV look: a system-style app manager. Plain CSS with rgba values on purpose:
+   the build flattens CSS variables for old TVs, which breaks Tailwind's opacity/ring colors. */
+
+html, body {
+    margin: 0;
+    background: #0A0F1A;
+    color: #FFFFFF;
+    font-family: 'SamsungOneUI', 'SamsungOne', 'Samsung Sans', Inter, system-ui, sans-serif;
 }
+
+/* Focus marker for older pages; main.jsx clicks the element with this class on Enter. */
+.focus {
+    outline: 4px solid #FFFFFF;
+    outline-offset: 4px;
+}
+
+/* Full-screen frame, laid out at 1920x1080 and scaled to the TV's viewport by app.jsx (fitScreen). */
+html, body { overflow: hidden; }
+.tb-screen { position: relative; width: 1920px; height: 1080px; overflow: hidden; transform-origin: 0 0; }
+.tb-backdrop { position: absolute; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; }
+.tb-muted { color: rgba(255,255,255,0.6); }
+
+/* Top bar */
+.tb-top { position: absolute; left: 120px; right: 120px; top: 80px; display: flex; justify-content: space-between; align-items: center; z-index: 2; }
+.tb-title { margin: 0; font-size: 64px; font-weight: 400; letter-spacing: -0.5px; }
+.tb-top-right { display: flex; align-items: center; }
+.tb-top-right > * + * { margin-left: 36px; }
+.tb-clock { font-size: 36px; font-weight: 300; color: rgba(255,255,255,0.85); }
+.tb-pill { display: flex; align-items: center; padding: 14px 28px; border-radius: 999px; font-size: 30px;
+    color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.08); }
+.tb-pill svg { margin-right: 14px; }
+.tb-pill.focus { outline: none; background: #FFFFFF; color: #0A0F1A; }
+
+/* Home: app tiles */
+/* One row that scrolls sideways (focus keeps the selected app in view); padding leaves room for the
+   lifted logo. No mask on the row: a mask forces the TV to repaint the whole row every frame. */
+.tb-apps { position: absolute; left: 0; right: 0; top: 440px; padding: 40px 120px 90px 120px; display: flex; flex-wrap: nowrap;
+    overflow: hidden; }
+.tb-app { position: relative; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; margin-right: 24px; }
+.tb-app.focus { outline: none; }
+
+/* Selection, Apple TV style but on the logo itself (no box behind it): the focused logo lifts
+   (rises and grows), a soft oval shadow appears under it and the other logos dim. No names under the
+   logos: the logo says which app it is. Only transform/opacity animate, on their own layers, so the TV
+   composites them without repainting (measured on the TV: 60 fps, at most the key-press frame late).
+   Logos are drawn at their selected size and shrunk when not selected: enlarging a layer made the
+   TV stretch a smaller drawing, which looked soft and glowy. */
+.tb-tile { position: relative; z-index: 1; width: 260px; height: 260px; display: flex; align-items: center; justify-content: center;
+    opacity: 0.45; -webkit-transform: translateZ(0) translateY(0) scale(0.84); transform: translateZ(0) translateY(0) scale(0.84);
+    will-change: transform, opacity;
+    -webkit-transition: -webkit-transform 300ms cubic-bezier(0.22, 1, 0.36, 1), opacity 300ms ease;
+    transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1), opacity 300ms ease; }
+.tb-app.focus .tb-tile { opacity: 1; -webkit-transform: translateZ(0) translateY(-8px) scale(1); transform: translateZ(0) translateY(-8px) scale(1); }
+.tb-tile img { object-fit: contain; }
+.tb-tile .tb-letter { width: 232px; height: 232px; border-radius: 54px; font-size: 112px; }
+/* "Add app" has no logo: an outlined shape the size of a logo keeps the row even. */
+.tb-add { width: 232px; height: 232px; box-sizing: border-box; border-radius: 54px; border: 3px solid rgba(255,255,255,0.32);
+    display: flex; align-items: center; justify-content: center; }
+.tb-app.focus .tb-add { border-color: #FFFFFF; background: rgba(255,255,255,0.08); }
+/* Contact shadow under the lifted logo (works for any logo shape); drawn once, only opacity/scale change. */
+.tb-app::after { content: ''; position: absolute; z-index: 0; left: 50px; right: 50px; top: 214px; height: 24px; border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(0,0,0,0.38), rgba(0,0,0,0)); pointer-events: none;
+    opacity: 0; -webkit-transform: scale(0.7); transform: scale(0.7); will-change: opacity, transform;
+    -webkit-transition: opacity 300ms ease, -webkit-transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition: opacity 300ms ease, transform 300ms cubic-bezier(0.22, 1, 0.36, 1); }
+.tb-app.focus::after { opacity: 1; -webkit-transform: scale(1); transform: scale(1); }
+.tb-letter { width: 140px; height: 140px; border-radius: 34px; display: flex; align-items: center; justify-content: center;
+    font-size: 70px; font-weight: 600; color: #FFFFFF; }
+
+/* Settings-style pages: side menu + rows */
+.tb-side { position: absolute; left: 110px; top: 300px; width: 520px; }
+.tb-nav { display: flex; align-items: center; padding: 26px 34px; margin-bottom: 14px; border-radius: 20px;
+    font-size: 38px; color: rgba(255,255,255,0.85); }
+.tb-nav svg { margin-right: 30px; flex-shrink: 0; }
+.tb-nav.active { background: rgba(255,255,255,0.12); color: #FFFFFF; }
+/* One focus style everywhere, as in Samsung's own TV settings: the selected item turns solid white. */
+.tb-nav.focus { outline: none; background: #FFFFFF; color: #0A0F1A; }
+.tb-divider { position: absolute; left: 680px; top: 270px; bottom: 140px; width: 1px; background: rgba(255,255,255,0.10); }
+.tb-main { position: absolute; left: 750px; top: 260px; width: 1040px; bottom: 40px; padding-top: 40px; box-sizing: border-box; overflow: hidden;
+    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 40px, #000 88%, transparent 100%);
+    mask-image: linear-gradient(180deg, transparent 0, #000 40px, #000 88%, transparent 100%); }
+.tb-heading { margin: 0 0 30px; font-size: 44px; font-weight: 400; }
+/* Flat rows (no card per row): a hairline between rows, and the selected row turns solid white. */
+.tb-row { position: relative; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; min-height: 112px;
+    padding: 28px 38px; margin-bottom: 4px; border-radius: 20px; font-size: 37px; color: #FFFFFF; }
+.tb-row::after { content: ''; position: absolute; left: 38px; right: 38px; bottom: -3px; height: 1px; background: rgba(255,255,255,0.09); }
+.tb-row.focus { outline: none; background: #FFFFFF; color: #0A0F1A; }
+.tb-row.focus::after { display: none; }
+.tb-row-end { display: flex; align-items: center; flex-shrink: 0; margin-left: 30px; color: rgba(255,255,255,0.6); }
+.tb-row.focus .tb-row-end { color: rgba(10,15,26,0.6); }
+.tb-row-action { color: #FFFFFF; }
+.tb-row.focus .tb-row-action { color: #C4161C; }
+.tb-row-end > * + * { margin-left: 22px; }
+.tb-row-icon { width: 64px; height: 64px; object-fit: contain; }
+.tb-row-start { display: flex; align-items: center; min-width: 0; }
+.tb-row-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tb-row-start img { margin-right: 26px; }
+.tb-info { display: flex; justify-content: space-between; padding: 26px 38px; font-size: 34px;
+    border-bottom: 1px solid rgba(255,255,255,0.08); }
+
+/* Add app */
+.tb-circle { width: 112px; height: 112px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.08); color: #FFFFFF; }
+.tb-circle.big { width: 144px; height: 144px; background: rgba(255,255,255,0.12); }
+.tb-circle.focus { outline: none; background: #FFFFFF; color: #0A0F1A; }
+.tb-field { width: 1020px; box-sizing: border-box; font-family: inherit; font-size: 38px; padding: 38px 44px;
+    border-radius: 22px; border: 3px solid rgba(255,255,255,0.35); background: rgba(255,255,255,0.06); color: #FFFFFF; outline: none; }
+.tb-field:focus { border-color: #FFFFFF; }
+
+/* Start-up and opening overlay */
+.tb-overlay { position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 10; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; background: #0A0F1A; }
+.tb-overlay-logo { width: 230px; height: 230px; object-fit: contain; }
+.tb-spinner { margin-top: 40px; -webkit-animation: tb-spin 1s linear infinite; animation: tb-spin 1s linear infinite; }
+@-webkit-keyframes tb-spin { to { -webkit-transform: rotate(360deg); } }
+@keyframes tb-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .tb-spinner { -webkit-animation-duration: 3s; animation-duration: 3s; } }
+.tb-overlay-name { margin: 44px 0 0; font-size: 50px; font-weight: 400; }
+.tb-overlay-hint { margin: 20px 0 0; font-size: 33px; line-height: 1.45; color: rgba(255,255,255,0.6); text-align: center; max-width: 1100px; }
+
+/* Error banner */
+.tb-error { position: absolute; left: 120px; right: 120px; bottom: 60px; z-index: 11; padding: 26px 34px; border-radius: 20px;
+    font-size: 30px; line-height: 1.4; color: #FFFFFF; background: rgba(220,38,38,0.85); }

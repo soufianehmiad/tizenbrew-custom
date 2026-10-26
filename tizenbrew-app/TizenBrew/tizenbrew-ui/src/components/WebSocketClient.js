@@ -159,8 +159,18 @@ class Client {
                 break;
             }
 
+            case Events.Error: {
+                this.context.dispatch({
+                    type: 'SET_ERROR',
+                    // The debugger failing almost always means Host PC IP isn't 127.0.0.1: use the clear, translated message.
+                    payload: { message: payload === 'Failed to connect to the debugger' ? 'errors.debuggingNotEnabled' : String(payload), disappear: false }
+                });
+                break;
+            }
+
             case Events.LaunchModule: {
-                const module = this.modules.find(mdl => mdl.fullName === payload);
+                // The service sends the short name here; accept either form.
+                const module = this.modules.find(mdl => mdl.fullName === payload || mdl.name === payload);
 
                 if (module) {
                     for (const key of module.keys) {
@@ -186,7 +196,8 @@ class Client {
         if (payload) {
             if (payload.type === 'autolaunch' && !window.shouldDisableAutoLaunch) {
                 const module = this.modules.find(mdl => mdl.fullName === payload.module);
-                if (!module) {
+                // A module that failed to download has no page to open; opening it reloaded TizenBrew in a loop.
+                if (!module || module.failed || (!module.appPath && !module.evaluateScriptOnDocumentStart)) {
                     this.context.dispatch({
                         type: 'SET_ERROR',
                         payload: {
@@ -207,6 +218,7 @@ class Client {
                     type: Events.LaunchModule,
                     payload: module
                 });
+                this.context.dispatch({ type: 'SET_OPENING', payload: module });
 
                 if (!module.evaluateScriptOnDocumentStart) {
                     location.href = module.appPath;
@@ -214,6 +226,7 @@ class Client {
             }
             else if (payload.type === 'appControl') {
                 const module = payload.module;
+                if (!module || module.failed || (!module.appPath && !module.evaluateScriptOnDocumentStart)) return;
                 for (const key of module.keys) {
                     tizen.tvinputdevice.registerKey(key);
                 }
@@ -222,6 +235,7 @@ class Client {
                     type: Events.LaunchModule,
                     payload: module
                 });
+                this.context.dispatch({ type: 'SET_OPENING', payload: module });
 
                 module.appPath.includes('?') ? location.href = `${module.appPath}&${payload.args}` : location.href = `${module.appPath}?${payload.args}`;
             }

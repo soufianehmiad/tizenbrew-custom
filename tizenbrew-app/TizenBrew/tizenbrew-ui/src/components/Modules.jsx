@@ -1,73 +1,84 @@
-import { useFocusable } from '@noriginmedia/norigin-spatial-navigation'
 import { useEffect, useContext } from 'react';
+import { useLocation } from 'preact-iso';
 import { GlobalStateContext } from './ClientContext.jsx';
 import { Events } from './WebSocketClient.js';
+import ModuleIcon from './ModuleIcon.jsx';
+import { cx, useTvFocus, appLabel, BASE } from './ui.jsx';
+import { useTranslation } from 'react-i18next';
 
-function classNames(...classes) {
-  return classes.filter(Boolean).join(' ')
+// Scroll the row so the selected tile sits in the second slot (the first one while at the start),
+// so it never ends up under the faded right edge.
+function keepInSecondSlot(el) {
+  const row = el && el.parentElement;
+  if (!row) return;
+  const slot = el.offsetWidth + 32;
+  const left = Math.max(0, el.offsetLeft - 120 - slot);
+  if (row.scrollTo) row.scrollTo({ left, behavior: 'smooth' }); else row.scrollLeft = left;
 }
 
-function Item({ children, module, id, state }) {
-  const { ref, focused } = useFocusable();
-  useEffect(() => {
-    if (focused) {
-      ref.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center',
-        inline: 'center',
-      });
-    }
-  }, [focused, ref]);
+function AppTile({ module, state, autoFocus }) {
+  const { ref, focused, focusKey } = useTvFocus(autoFocus, true);
 
-  function handleOnClick() {
+  useEffect(() => {
+    if (!focused) return;
+    keepInSecondSlot(ref.current);
+  }, [focused]);
+
+  function open() {
+    // Failed downloads have nothing to open (and opening them reloaded TizenBrew).
+    if (module.failed || (!module.appPath && !module.evaluateScriptOnDocumentStart)) {
+      window.dispatch({ type: 'SET_ERROR', payload: { message: 'errors.moduleNotFound', args: { moduleName: module.fullName }, disappear: true } });
+      return;
+    }
     for (const key of module.keys) {
       tizen.tvinputdevice.registerKey(key);
     }
-
-    state.client.send({
-      type: Events.LaunchModule,
-      payload: module
-    });
-
+    state.client.send({ type: Events.LaunchModule, payload: module });
+    window.dispatch({ type: 'SET_OPENING', payload: module });
     if (!module.evaluateScriptOnDocumentStart) {
       location.href = module.appPath;
     }
   }
 
   return (
-    <div
-      key={id}
-      ref={ref}
-      onClick={handleOnClick}
-      className={classNames(
-        'relative bg-gray-900 shadow-2xl rounded-3xl p-8 ring-1 ring-gray-900/10 sm:p-10 h-[35vh] w-[20vw]',
-        focused ? 'focus' : '',
-        id === 0 ? 'ml-4' : ''
-      )}
-    >
-      {children}
+    // No visible name: the logo says which app it is (the name stays for screen readers).
+    <div ref={ref} data-fk={focusKey} onClick={open} className={cx('tb-app', focused && 'focus')} aria-label={appLabel(module)} role="button">
+      <span className="tb-tile"><ModuleIcon module={module} /></span>
     </div>
   );
 }
-export default function Modules() {
-  const { state } = useContext(GlobalStateContext);
+
+function AddTile({ autoFocus }) {
+  const loc = useLocation();
+  const { t } = useTranslation();
+  const { ref, focused, focusKey } = useTvFocus(autoFocus, true);
+
+  useEffect(() => {
+    if (!focused) return;
+    keepInSecondSlot(ref.current);
+  }, [focused]);
 
   return (
-    <div className="relative isolate lg:px-8">
-      <div className="mx-auto flex flex-wrap justify-center gap-4 top-4 relative">
-        {state?.sharedData?.modules?.map((module, moduleIdx) => (
-          <Item module={module} id={moduleIdx} state={state}>
-            <h3
-              className='text-indigo-400 text-base/7 font-semibold'
-            >
-              {module.appName} ({module.version})
-            </h3>
-            <p className='text-gray-300 mt-6 text-base/7'>
-              {module.description}
-            </p>
-          </Item>
-        ))}
-      </div>
+    <div ref={ref} data-fk={focusKey} onClick={() => loc.route(BASE + '/module-manager/add?type=npm')} className={cx('tb-app', focused && 'focus')} aria-label={t('tb.addApp')} role="button">
+      <span className="tb-tile"><span className="tb-add">
+        <svg aria-hidden="true" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="1.3" stroke-linecap="round"><path d="M12 4.5v15M4.5 12h15"></path></svg>
+      </span></span>
     </div>
-  )
+  );
+}
+
+export default function Modules() {
+  const { state } = useContext(GlobalStateContext);
+  const modules = state?.sharedData?.modules;
+
+  if (!modules) return null; // the start-up screen covers this moment
+
+  return (
+    <section className="tb-apps" aria-label="Apps">
+      {modules.map((module, idx) => (
+        <AppTile key={module.fullName} module={module} state={state} autoFocus={idx === 0} />
+      ))}
+      <AddTile autoFocus={modules.length === 0} />
+    </section>
+  );
 }

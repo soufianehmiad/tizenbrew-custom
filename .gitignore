@@ -8,3 +8,8 @@ dist
 bin
 obj
 TizenBrewService
+# custom build output
+custom/build/
+tizenbrew-app/TizenBrew/.buildResult/
+tizenbrew-app/TizenBrew/service-nextgen/service/transpiled/
+custom/vendor/
