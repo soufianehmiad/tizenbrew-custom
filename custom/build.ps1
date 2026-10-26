@@ -33,6 +33,8 @@ node "$PSScriptRoot\test-pending-launch.js"
 if ($LASTEXITCODE -ne 0) { throw 'Autolaunch fix test failed' }
 node "$PSScriptRoot\test-fixes.js"
 if ($LASTEXITCODE -ne 0) { throw 'Fixes loader test failed' }
+node "$PSScriptRoot\test-keepalive.js"
+if ($LASTEXITCODE -ne 0) { throw 'Keep-alive / Back script test failed' }
 Invoke-Tool 'npm run build' $svc
 Remove-Item "$svc\transpiled" -Recurse -Force -ErrorAction SilentlyContinue
 # Run the built service on this PC and talk to it like the TV interface does (needs internet; warning only).

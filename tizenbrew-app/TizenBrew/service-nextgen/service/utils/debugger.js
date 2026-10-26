@@ -11,7 +11,7 @@ const WebSocket = require('ws');
 const modulesCache = new Map();
 
 // Back returns to TizenBrew from app pages (see backKey.js); also added by the service to app pages.
-const { BACK_TO_TIZENBREW } = require('./backKey.js');
+const { PAGE_SCRIPT } = require('./backKey.js');
 
 // Module code, cached per module *version* so a new release is picked up on the next launch.
 function cacheKey(mdl) {
@@ -54,7 +54,7 @@ function startDebugging(port, queuedEvents, clientConn, ip, mdl, inDebug, appCon
             // user stuck (e.g. TizenGlow). Back returns to TizenBrew unless the app handled it itself.
             if (!isAnotherApp) {
                 client.Page.enable();
-                client.Page.addScriptToEvaluateOnNewDocument({ source: BACK_TO_TIZENBREW, expression: BACK_TO_TIZENBREW });
+                client.Page.addScriptToEvaluateOnNewDocument({ source: PAGE_SCRIPT, expression: PAGE_SCRIPT });
             }
 
             client.on('Runtime.executionContextCreated', (msg) => {

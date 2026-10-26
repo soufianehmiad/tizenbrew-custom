@@ -151,6 +151,8 @@ function connect(origin) {
     assert.strictEqual(page.body.split('__tbBackFix = true').length, 2, 'Back script missing or doubled');
     assert.ok(/<head[^>]*><script>\(function \(\) \{\s+if \(window\.__tbBackFix\)/.test(page.body), 'Back script not at the start of <head>');
     assert.ok(page.body.includes('swagger-ui'), 'page content changed');
+    // ...and the script that keeps TizenBrew running in the background instead of quitting.
+    assert.strictEqual(page.body.split('window.__tbKeepAlive = true').length, 2, 'keep-alive script missing or doubled');
     const css = await get('/module/' + encodeURIComponent('npm/swagger-ui-dist@5.9.0') + '/swagger-ui.css');
     assert.ok(/text\/css/.test(css.type || ''), 'css served as ' + css.type);
     assert.ok(!css.body.includes('__tbBackFix'), 'Back script added to a non-HTML file');

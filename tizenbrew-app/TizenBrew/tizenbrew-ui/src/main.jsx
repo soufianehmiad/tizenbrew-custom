@@ -61,7 +61,10 @@ window.addEventListener('keydown', (e) => {
         if (location.pathname !== HOME) {
             window.tbGoBack();
         } else {
-            tizen.application.getCurrentApplication().exit();
+            // Back on Home: go to the background like the TV's own apps, instead of quitting. A quit
+            // TizenBrew has to restart into debug mode on its next start; a backgrounded one resumes.
+            const app = tizen.application.getCurrentApplication();
+            try { app.hide(); } catch (err) { app.exit(); }
         }
     } else if (e.keyCode === 38) {
         window.shouldDisableAutoLaunch = true;
